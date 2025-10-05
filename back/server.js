@@ -154,7 +154,7 @@ app.get("/projets/:id", async (req, res) => {
 app.get("/etudiants/:id/livrables", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT L.Id_livrable, L.Nom, L.Titre, L.Date_soumission, L.Status, L.Chemin_fichier,
+      `SELECT L.Id_livrable, L.Id_etudiant, L.Id_encadreur, L.Nom, L.Titre, L.Date_soumission, L.Status, L.Chemin_fichier,
               P.Theme AS Nom_projet
        FROM livrable L
        JOIN projet P ON L.Id_projet = P.Id_projet
@@ -164,15 +164,22 @@ app.get("/etudiants/:id/livrables", async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Erreur récupération livrables" });
+    console.error("Erreur récupération livrables:", err);
+    res.status(500).json({ error: "Erreur récupération livrables", details: err.message });
   }
 });
 
 // ADD livrable
-app.post("/etudiants/:id/livrables", upload.single("fichier"), async (req, res) => {
+app.post("/livrables", upload.single("fichier"), async (req, res) => {
   try {
-    const { Nom, Titre, Id_projet, Id_encadreur, Date_soumission, Status } = req.body;
-    const Id_etudiant = req.params.id;
+    const { Nom, Titre, Id_projet, Id_etudiant, Date_soumission, Status } = req.body;
+
+    // Get Id_encadreur from the projet
+    const [projetRows] = await pool.query("SELECT Id_encadreur FROM projet WHERE Id_projet = ?", [Id_projet]);
+    if (projetRows.length === 0) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+    const Id_encadreur = projetRows[0].Id_encadreur;
 
     let chemin_fichier = null, type = null, taille = null;
     if (req.file) {
@@ -188,30 +195,48 @@ app.post("/etudiants/:id/livrables", upload.single("fichier"), async (req, res) 
     );
     res.json({ message: "Livrable ajouté", id: result.insertId });
   } catch (err) {
-    res.status(500).json({ error: "Erreur ajout livrable" });
+    console.error("Erreur ajout livrable:", err);
+    res.status(500).json({ error: "Erreur ajout livrable", details: err.message });
   }
 });
 
 // UPDATE livrable
 app.put("/livrables/:id", upload.single("fichier"), async (req, res) => {
   try {
-    const { Nom, Titre, Id_projet, Id_etudiant, Id_encadreur, Date_soumission, Status } = req.body;
+    const { Nom, Titre, Id_projet, Id_etudiant, Date_soumission, Status } = req.body;
 
-    let chemin_fichier = null, type = null, taille = null;
+    // Get current livrable data to preserve status if needed
+    const [currentRows] = await pool.query("SELECT Status, Chemin_fichier, Id_encadreur FROM livrable WHERE Id_livrable=?", [req.params.id]);
+    const currentLivrable = currentRows[0];
+
+    let chemin_fichier = currentLivrable ? currentLivrable.Chemin_fichier : null;
+    let type = null, taille = null;
+
     if (req.file) {
       chemin_fichier = `/uploads/${req.file.filename}`;
       type = req.file.mimetype;
       taille = (req.file.size / 1024 / 1024).toFixed(2) + "MB";
     }
 
+    // Determine the status to use
+    let finalStatus = Status;
+    if (!finalStatus && currentLivrable) {
+      // If no status provided, keep the current one
+      finalStatus = currentLivrable.Status;
+    } else if (!finalStatus) {
+      // If no current status and no new status, default to "Soumis"
+      finalStatus = "Soumis";
+    }
+
     const [result] = await pool.query(
-      `UPDATE livrable SET Id_projet=?, Id_etudiant=?, Id_encadreur=?, Nom=?, Titre=?, 
+      `UPDATE livrable SET Id_projet=?, Id_etudiant=?, Id_encadreur=?, Nom=?, Titre=?,
        Type=?, Taille_fichier=?, Date_soumission=?, Status=?, Chemin_fichier=? WHERE Id_livrable=?`,
-      [Id_projet, Id_etudiant, Id_encadreur, Nom, Titre, type, taille, Date_soumission, Status, chemin_fichier, req.params.id]
+      [Id_projet, Id_etudiant, currentLivrable.Id_encadreur, Nom, Titre, type, taille, Date_soumission, finalStatus, chemin_fichier, req.params.id]
     );
     res.json({ message: "Livrable modifié", affected: result.affectedRows });
   } catch (err) {
-    res.status(500).json({ error: "Erreur modification livrable" });
+    console.error("Erreur modification livrable:", err);
+    res.status(500).json({ error: "Erreur modification livrable", details: err.message });
   }
 });
 
@@ -226,7 +251,8 @@ app.delete("/livrables/:id", async (req, res) => {
     const [result] = await pool.query("DELETE FROM livrable WHERE Id_livrable=?", [req.params.id]);
     res.json({ message: "Livrable supprimé", affected: result.affectedRows });
   } catch (err) {
-    res.status(500).json({ error: "Erreur suppression livrable" });
+    console.error("Erreur suppression livrable:", err);
+    res.status(500).json({ error: "Erreur suppression livrable", details: err.message });
   }
 });
 
