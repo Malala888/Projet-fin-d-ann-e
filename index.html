@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENI Academic Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .notification-dot {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navbar -->
+    <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10 space-x-4">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">Gestion de Projet</p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+            <span class="ml-2 text-sm font-medium">John Doe</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+    <!-- Main Content -->
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="sidebar bg-white w-64 min-h-screen border-r hidden md:block">
+            <div class="p-4 border-b">
+                <div class="flex items-center">
+                    <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/1" alt="Profile">
+                    <div class="ml-3">
+                        <p class="text-sm font-medium text-gray-700">John Doe</p>
+                        <p class="text-xs text-gray-500">Enseignant</p>
+                    </div>
+                </div>
+            </div>
+            <nav class="p-4">
+                <div class="space-y-1">
+                    <a href="index.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+                        <i data-feather="home" class="mr-3 h-5 w-5"></i>
+                        Dashboard
+                    </a>
+                    <a href="etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <i data-feather="users" class="mr-3 h-5 w-5"></i>
+                        Étudiants
+                    </a>
+                    <a href="project.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <i data-feather="briefcase" class="mr-3 h-5 w-5"></i>
+                        Projets
+                    </a>
+                    <a href="calendrier.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <i data-feather="calendar" class="mr-3 h-5 w-5"></i>
+                        Calendrier
+                    </a>
+                    <a href="livrable.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <i data-feather="file-text" class="mr-3 h-5 w-5"></i>
+                        Livrables
+                    </a>
+                    <a href="statistique.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                        <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i>
+                        Statistiques
+                    </a>
+                </div>
+                <div class="mt-8">
+                    <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Administration
+                    </h3>
+                    <div class="mt-1 space-y-1">
+                        <a href="parametre.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                            <i data-feather="settings" class="mr-3 h-5 w-5"></i>
+                            Paramètres
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div class="flex-1 p-8">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Tableau de bord</h1>
+                <p class="text-gray-600">Bienvenue sur votre espace d'encadrement académique</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                            <i data-feather="users"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Étudiants encadrés</p>
+                            <p class="text-2xl font-semibold text-gray-800">14</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <i data-feather="briefcase"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Projets actifs</p>
+                            <p class="text-2xl font-semibold text-gray-800">8</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                            <i data-feather="calendar"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Réunions cette semaine</p>
+                            <p class="text-2xl font-semibold text-gray-800">5</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-card bg-white rounded-lg shadow p-6">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-red-100 text-red-600">
+                            <i data-feather="alert-triangle"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-500">Livrables en retard</p>
+                            <p class="text-2xl font-semibold text-gray-800">2</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Upcoming Meetings -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-medium text-gray-900">Prochaines réunions</h2>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            <div class="px-6 py-4 flex items-center hover:bg-gray-50">
+                                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                                    <i data-feather="calendar" class="h-6 w-6 text-blue-600"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-sm font-medium text-blue-600">Réunion de suivi</p>
+                                        <p class="text-sm text-gray-500">10:00 - 10:30</p>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Projet: Système de gestion académique</p>
+                                    <p class="text-sm text-gray-500">Étudiant: Jean Dupont (M1)</p>
+                                </div>
+                            </div>
+                            <div class="px-6 py-4 flex items-center hover:bg-gray-50">
+                                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                                    <i data-feather="calendar" class="h-6 w-6 text-green-600"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-sm font-medium text-green-600">Soutenance</p>
+                                        <p class="text-sm text-gray-500">14:00 - 15:00</p>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Projet: Plateforme e-learning</p>
+                                    <p class="text-sm text-gray-500">Étudiant: Marie Martin (L1)</p>
+                                </div>
+                            </div>
+                            <div class="px-6 py-4 flex items-center hover:bg-gray-50">
+                                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                                    <i data-feather="calendar" class="h-6 w-6 text-purple-600"></i>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <div class="flex items-center justify-between">
+                                        <p class="text-sm font-medium text-purple-600">Réunion d'équipe</p>
+                                        <p class="text-sm text-gray-500">16:30 - 17:30</p>
+                                    </div>
+                                    <p class="text-sm text-gray-500">Projet: Application mobile</p>
+                                    <p class="text-sm text-gray-500">Étudiants: Groupe L1-04</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 text-right">
+                            <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500">Voir toutes les réunions</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Deliverables -->
+                <div>
+                    <div class="bg-white rounded-lg shadow overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h2 class="text-lg font-medium text-gray-900">Derniers livrables</h2>
+                        </div>
+                        <div class="divide-y divide-gray-200">
+                            <div class="px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i data-feather="file-text" class="h-5 w-5 text-gray-400"></i>
+                                        <p class="ml-2 text-sm font-medium text-gray-900">Rapport intermédiaire.pdf</p>
+                                    </div>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Validé</span>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">Projet: Système de gestion - Jean Dupont</p>
+                                <p class="mt-1 text-xs text-gray-400">Soumis le 15/05/2023</p>
+                            </div>
+                            <div class="px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i data-feather="file-text" class="h-5 w-5 text-gray-400"></i>
+                                        <p class="ml-2 text-sm font-medium text-gray-900">Cahier des charges.docx</p>
+                                    </div>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">En attente</span>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">Projet: Plateforme e-learning - Marie Martin</p>
+                                <p class="mt-1 text-xs text-gray-400">Soumis le 14/05/2023</p>
+                            </div>
+                            <div class="px-6 py-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <i data-feather="file-text" class="h-5 w-5 text-gray-400"></i>
+                                        <p class="ml-2 text-sm font-medium text-gray-900">Présentation.pptx</p>
+                                    </div>
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">En retard</span>
+                                </div>
+                                <p class="mt-1 text-sm text-gray-500">Projet: Application mobile - Groupe L1-04</p>
+                                <p class="mt-1 text-xs text-gray-400">Échéance le 12/05/2023</p>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 text-right">
+                            <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500">Voir tous les livrables</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Student Projects -->
+            <div class="mt-8">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                        <h2 class="text-lg font-medium text-gray-900">Vos étudiants encadrés</h2>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">L1</button>
+                            <button class="px-3 py-1 bg-gray-200 text-gray-700 text-sm rounded hover:bg-gray-300">M1</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Étudiant</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Niveau</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avancement</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Prochaine réunion</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">Jean Dupont</div>
+                                                <div class="text-sm text-gray-500">jean.dupont@eni.fr</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Système de gestion académique</div>
+                                        <div class="text-sm text-gray-500">Développement web</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">M1</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">65% complété</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        18/05/2023 - 10:00
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></a>
+                                        <a href="#" class="text-green-600 hover:text-green-900 mr-3"><i data-feather="message-square"></i></a>
+                                        <a href="#" class="text-purple-600 hover:text-purple-900"><i data-feather="calendar"></i></a>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/3" alt="">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">Marie Martin</div>
+                                                <div class="text-sm text-gray-500">marie.martin@eni.fr</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Plateforme e-learning</div>
+                                        <div class="text-sm text-gray-500">Développement web</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">L1</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div class="bg-green-600 h-2.5 rounded-full" style="width: 40%"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">40% complété</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        20/05/2023 - 14:00
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></a>
+                                        <a href="#" class="text-green-600 hover:text-green-900 mr-3"><i data-feather="message-square"></i></a>
+                                        <a href="#" class="text-purple-600 hover:text-purple-900"><i data-feather="calendar"></i></a>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex items-center">
+                                            <div class="flex-shrink-0 h-10 w-10">
+                                                <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/4" alt="">
+                                            </div>
+                                            <div class="ml-4">
+                                                <div class="text-sm font-medium text-gray-900">Groupe L1-04</div>
+                                                <div class="text-sm text-gray-500">4 membres</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="text-sm text-gray-900">Application mobile</div>
+                                        <div class="text-sm text-gray-500">Développement mobile</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">L1</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                            <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 25%"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">25% complété</div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        22/05/2023 - 16:30
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <a href="#" class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></a>
+                                        <a href="#" class="text-green-600 hover:text-green-900 mr-3"><i data-feather="message-square"></i></a>
+                                        <a href="#" class="text-purple-600 hover:text-purple-900"><i data-feather="calendar"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 text-right">
+                        <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-500">Voir tous les étudiants</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        AOS.init();
+        feather.replace();
+        
+        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.querySelector('.md\\:hidden button');
+            const sidebar = document.querySelector('.sidebar');
+            
+            mobileMenuButton.addEventListener('click', function() {
+                sidebar.classList.toggle('hidden');
+            });
+        });
+    </script>
+</body>
+</html>

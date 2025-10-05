@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mes Projets - ENI Academic Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
+              Espace Étudiant
+            </p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/2" alt="Profile">
+            <span class="ml-2 text-sm font-medium">Jean Dupont</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen border-r hidden md:block">
+      <div class="p-4 border-b flex items-center">
+        <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="">
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-700">Jean Dupont</p>
+          <p class="text-xs text-gray-500">Étudiant M1</p>
+        </div>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="dashboard.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="home" class="mr-3 h-5 w-5"></i> Tableau de bord
+        </a>
+        <a href="mes_projets.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+          <i data-feather="briefcase" class="mr-3 h-5 w-5"></i> Mes projets
+        </a>
+        <a href="mes_livrables.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="file-text" class="mr-3 h-5 w-5"></i> Mes livrables
+        </a>
+        <a href="calendrier_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="calendar" class="mr-3 h-5 w-5"></i> Calendrier
+        </a>
+        <a href="statistiques_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i> Mes statistiques
+        </a>
+        <a href="parametres_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="settings" class="mr-3 h-5 w-5"></i> Paramètres
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Mes projets</h1>
+      <div class="overflow-x-auto bg-white shadow rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Projet</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Enseignant</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Échéance</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avancement</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900">Système de gestion académique</div>
+                <div class="text-sm text-gray-500">Développement web</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center">
+                  <img class="h-6 w-6 rounded-full mr-2" src="http://static.photos/people/200x200/1" alt="">
+                  <span>John Doe</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-500">30/06/2023</td>
+              <td class="px-6 py-4">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">65% complété</p>
+              </td>
+              <td class="px-6 py-4 text-sm font-medium">
+                <a href="projet_detail.html" class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></a>
+                <a href="messagerie.html" class="text-green-600 hover:text-green-900"><i data-feather="message-square"></i></a>
+              </td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4">
+                <div class="text-sm font-medium text-gray-900">Plateforme e-learning</div>
+                <div class="text-sm text-gray-500">Développement web</div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center">
+                  <img class="h-6 w-6 rounded-full mr-2" src="http://static.photos/people/200x200/6" alt="">
+                  <span>Sophie Martin</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-500">15/07/2023</td>
+              <td class="px-6 py-4">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                  <div class="bg-green-600 h-2.5 rounded-full" style="width: 40%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">40% complété</p>
+              </td>
+              <td class="px-6 py-4 text-sm font-medium">
+                <a href="projet_detail.html" class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></a>
+                <a href="messagerie.html" class="text-green-600 hover:text-green-900"><i data-feather="message-square"></i></a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script>feather.replace();</script>
+</body>
+</html>

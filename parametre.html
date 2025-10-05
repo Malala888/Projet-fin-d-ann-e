@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paramètres - ENI Academic Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10 space-x-4">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">Gestion de Projet</p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+            <span class="ml-2 text-sm font-medium">John Doe</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen border-r hidden md:block">
+      <div class="p-4 border-b flex items-center">
+        <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-700">John Doe</p>
+          <p class="text-xs text-gray-500">Enseignant</p>
+        </div>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="index.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="home" class="mr-3 h-5 w-5"></i> Dashboard
+        </a>
+        <a href="etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="users" class="mr-3 h-5 w-5"></i> Étudiants
+        </a>
+        <a href="project.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="briefcase" class="mr-3 h-5 w-5"></i> Projets
+        </a>
+        <a href="calendrier.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="calendar" class="mr-3 h-5 w-5"></i> Calendrier
+        </a>
+        <a href="livrable.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="file-text" class="mr-3 h-5 w-5"></i> Livrables
+        </a>
+        <a href="statistique.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i> Statistiques
+        </a>
+        <div class="mt-8">
+          <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Administration
+          </h3>
+          <div class="mt-1 space-y-1">
+            <a href="parametre.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+              <i data-feather="settings" class="mr-3 h-5 w-5"></i>
+              Paramètres
+            </a>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Paramètres du compte</h1>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left column -->
+        <div class="lg:col-span-2 space-y-6">
+          <!-- Profile settings -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Informations personnelles</h2>
+            </div>
+            <div class="px-6 py-4">
+              <form class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                    <input type="text" value="John" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <input type="text" value="Doe" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value="john.doe@eni.fr" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Titre</label>
+                  <input type="text" value="Enseignant" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Département</label>
+                  <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option selected>Informatique</option>
+                    <option>Réseaux et télécommunications</option>
+                    <option>Cybersécurité</option>
+                    <option>Développement web</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                  <textarea rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">Enseignant en développement web avec 10 ans d'expérience. Spécialisé en React et Node.js.</textarea>
+                </div>
+                <div class="pt-4">
+                  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Enregistrer les modifications
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Password settings -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Changer le mot de passe</h2>
+            </div>
+            <div class="px-6 py-4">
+              <form class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Mot de passe actuel</label>
+                  <input type="password" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Nouveau mot de passe</label>
+                  <input type="password" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Confirmer le nouveau mot de passe</label>
+                  <input type="password" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div class="pt-4">
+                  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                    Mettre à jour le mot de passe
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Notification settings -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Préférences de notifications</h2>
+            </div>
+            <div class="px-6 py-4">
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Notifications par email</p>
+                    <p class="text-sm text-gray-500">Recevoir des notifications importantes par email</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Nouveaux livrables</p>
+                    <p class="text-sm text-gray-500">Être alerté lorsqu'un étudiant soumet un nouveau livrable</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Rappels de réunion</p>
+                    <p class="text-sm text-gray-500">Recevoir des rappels avant les réunions programmées</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Annonces système</p>
+                    <p class="text-sm text-gray-500">Recevoir les annonces importantes de la plateforme</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+              <div class="pt-4">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Enregistrer les préférences
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="space-y-6">
+          <!-- Profile photo -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Photo de profil</h2>
+            </div>
+            <div class="px-6 py-4">
+              <div class="flex items-center">
+                <div class="mr-4">
+                  <img class="h-16 w-16 rounded-full" src="http://static.photos/people/200x200/1" alt="Profile">
+                </div>
+                <div class="flex flex-col space-y-2">
+                  <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm">
+                    Changer la photo
+                  </button>
+                  <button class="px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mt-4">Formats recommandés: JPG, PNG ou GIF. Taille max: 5MB.</p>
+            </div>
+          </div>
+
+          <!-- Account preferences -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Préférences du compte</h2>
+            </div>
+            <div class="px-6 py-4">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Langue</label>
+                  <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option selected>Français</option>
+                    <option>English</option>
+                    <option>Español</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Fuseau horaire</label>
+                  <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option selected>Europe/Paris (UTC+1)</option>
+                    <option>UTC</option>
+                    <option>America/New_York (UTC-5)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Format de date</label>
+                  <select class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <option selected>JJ/MM/AAAA</option>
+                    <option>MM/JJ/AAAA</option>
+                    <option>AAAA-MM-JJ</option>
+                  </select>
+                </div>
+              </div>
+              <div class="pt-4">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Enregistrer les préférences
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Danger zone -->
+          <div class="bg-white shadow rounded-lg overflow-hidden border border-red-200">
+            <div class="px-6 py-4 border-b border-red-200 bg-red-50">
+              <h2 class="text-lg font-medium text-red-800">Zone de danger</h2>
+            </div>
+            <div class="px-6 py-4">
+              <p class="text-sm text-gray-600 mb-4">Une fois que vous supprimez votre compte, il n'y a pas de retour en arrière. Soyez certain.</p>
+              <div class="space-y-2">
+                <button class="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm">
+                  Exporter mes données
+                </button>
+                <button class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
+                  Supprimer mon compte
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- System info -->
+          <div class="bg-white shadow rounded-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+              <h2 class="text-lg font-medium text-gray-900">Informations système</h2>
+            </div>
+            <div class="px-6 py-4">
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Version de l'application</span>
+                  <span class="text-gray-900">2.3.1</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Dernière connexion</span>
+                  <span class="text-gray-900">18/05/2023 10:24</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Statut du compte</span>
+                  <span class="text-green-600">Actif</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Rôle</span>
+                  <span class="text-gray-900">Enseignant</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Initialize libraries
+    AOS.init();
+    feather.replace();
+  </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Détails du projet - ENI Academic Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
+              Espace Étudiant
+            </p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/2" alt="Profile">
+            <span class="ml-2 text-sm font-medium">Jean Dupont</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen border-r hidden md:block">
+      <div class="p-4 border-b flex items-center">
+        <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="">
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-700">Jean Dupont</p>
+          <p class="text-xs text-gray-500">Étudiant M1</p>
+        </div>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="dashboard.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="home" class="mr-3 h-5 w-5"></i> Tableau de bord
+        </a>
+        <a href="mes_projets.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+          <i data-feather="briefcase" class="mr-3 h-5 w-5"></i> Mes projets
+        </a>
+        <a href="mes_livrables.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="file-text" class="mr-3 h-5 w-5"></i> Mes livrables
+        </a>
+        <a href="calendrier_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="calendar" class="mr-3 h-5 w-5"></i> Calendrier
+        </a>
+        <a href="statistiques_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i> Mes statistiques
+        </a>
+        <a href="parametres_etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="settings" class="mr-3 h-5 w-5"></i> Paramètres
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 p-8">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Système de gestion académique</h1>
+        <span class="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-800">En cours</span>
+      </div>
+
+      <!-- Project details -->
+      <section class="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Description</h2>
+        <p class="text-gray-700 text-sm leading-6">
+          Ce projet a pour objectif de développer une plateforme de gestion académique permettant de gérer les étudiants, les cours et les résultats.
+          L’application sera conçue en utilisant des technologies web modernes afin de faciliter son utilisation et sa maintenance.
+        </p>
+      </section>
+
+      <!-- Encadrant + échéance -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">Encadrant</h3>
+          <div class="flex items-center">
+            <img src="http://static.photos/people/200x200/1" class="h-10 w-10 rounded-full mr-3" alt="">
+            <div>
+              <p class="text-gray-900 font-medium">John Doe</p>
+              <p class="text-gray-500 text-sm">Professeur - Informatique</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h3 class="text-sm font-medium text-gray-500 mb-2">Échéance</h3>
+          <p class="text-gray-900 font-semibold">30 Juin 2023</p>
+          <div class="mt-2 w-full bg-gray-200 rounded-full h-2.5">
+            <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+          </div>
+          <p class="text-xs text-gray-500 mt-1">65% complété</p>
+        </div>
+      </div>
+
+      <!-- Team -->
+      <section class="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Équipe</h2>
+        <div class="flex -space-x-4">
+          <img class="h-10 w-10 rounded-full border-2 border-white" src="http://static.photos/people/200x200/2" alt="Membre 1">
+          <img class="h-10 w-10 rounded-full border-2 border-white" src="http://static.photos/people/200x200/3" alt="Membre 2">
+          <img class="h-10 w-10 rounded-full border-2 border-white" src="http://static.photos/people/200x200/4" alt="Membre 3">
+          <span class="flex items-center justify-center h-10 w-10 rounded-full bg-gray-200 text-sm text-gray-600">+2</span>
+        </div>
+      </section>
+
+      <!-- Deliverables -->
+      <section class="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Livrables</h2>
+        <ul class="divide-y divide-gray-200 text-sm">
+          <li class="py-3 flex justify-between items-center">
+            <span>Rapport de conception</span>
+            <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Validé</span>
+          </li>
+          <li class="py-3 flex justify-between items-center">
+            <span>Prototype fonctionnel</span>
+            <span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">En attente</span>
+          </li>
+          <li class="py-3 flex justify-between items-center">
+            <span>Application finale</span>
+            <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">À venir</span>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Activity log -->
+      <section class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Activités récentes</h2>
+        <ul class="space-y-3 text-sm">
+          <li class="flex items-center">
+            <i data-feather="check-circle" class="text-green-500 mr-2"></i>
+            Jean Dupont a soumis le rapport de conception
+            <span class="ml-auto text-xs text-gray-500">il y a 2 jours</span>
+          </li>
+          <li class="flex items-center">
+            <i data-feather="upload" class="text-blue-500 mr-2"></i>
+            Marie Martin a ajouté un nouveau prototype
+            <span class="ml-auto text-xs text-gray-500">il y a 1 semaine</span>
+          </li>
+          <li class="flex items-center">
+            <i data-feather="message-circle" class="text-yellow-500 mr-2"></i>
+            Commentaire laissé par l'encadrant
+            <span class="ml-auto text-xs text-gray-500">il y a 2 semaines</span>
+          </li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    feather.replace();
+  </script>
+</body>
+</html>

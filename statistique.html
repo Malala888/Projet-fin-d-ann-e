@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistiques - ENI Academic Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10 space-x-4">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">Gestion de Projet</p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+            <span class="ml-2 text-sm font-medium">John Doe</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen border-r hidden md:block">
+      <div class="p-4 border-b flex items-center">
+        <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-700">John Doe</p>
+          <p class="text-xs text-gray-500">Enseignant</p>
+        </div>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="index.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="home" class="mr-3 h-5 w-5"></i> Dashboard
+        </a>
+        <a href="etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="users" class="mr-3 h-5 w-5"></i> Étudiants
+        </a>
+        <a href="project.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="briefcase" class="mr-3 h-5 w-5"></i> Projets
+        </a>
+        <a href="calendrier.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="calendar" class="mr-3 h-5 w-5"></i> Calendrier
+        </a>
+        <a href="livrable.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="file-text" class="mr-3 h-5 w-5"></i> Livrables
+        </a>
+        <a href="statistique.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+          <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i> Statistiques
+        </a>
+        <div class="mt-8">
+          <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Administration
+          </h3>
+          <div class="mt-1 space-y-1">
+            <a href="parametre.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <i data-feather="settings" class="mr-3 h-5 w-5"></i>
+              Paramètres
+            </a>
+          </div>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-8">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Statistiques et analyses</h1>
+        <div class="flex space-x-2">
+          <select class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            <option>Ce mois-ci</option>
+            <option>Ce trimestre</option>
+            <option>Cette année</option>
+            <option>Tout</option>
+          </select>
+          <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 flex items-center">
+            <i data-feather="download" class="mr-2 h-4 w-4"></i> Exporter
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats overview -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+              <i data-feather="users"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Étudiants encadrés</p>
+              <p class="text-2xl font-semibold text-gray-800">14</p>
+              <p class="text-xs text-green-600 mt-1"><i data-feather="trending-up" class="h-3 w-3 inline"></i> +17% vs période précédente</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-green-100 text-green-600">
+              <i data-feather="briefcase"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Projets actifs</p>
+              <p class="text-2xl font-semibold text-gray-800">8</p>
+              <p class="text-xs text-green-600 mt-1"><i data-feather="trending-up" class="h-3 w-3 inline"></i> +14% vs période précédente</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+              <i data-feather="check-circle"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Taux de réussite</p>
+              <p class="text-2xl font-semibold text-gray-800">89%</p>
+              <p class="text-xs text-green-600 mt-1"><i data-feather="trending-up" class="h-3 w-3 inline"></i> +5% vs période précédente</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <div class="flex items-center">
+            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+              <i data-feather="clock"></i>
+            </div>
+            <div class="ml-4">
+              <p class="text-sm font-medium text-gray-500">Charge moyenne</p>
+              <p class="text-2xl font-semibold text-gray-800">12h/sem</p>
+              <p class="text-xs text-red-600 mt-1"><i data-feather="trending-down" class="h-3 w-3 inline"></i> -8% vs période précédente</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Project progress chart -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Avancement des projets</h2>
+          <div class="h-80">
+            <canvas id="progressChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Deliverable status chart -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Statut des livrables</h2>
+          <div class="h-80">
+            <canvas id="deliverablesChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Student distribution chart -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Répartition par niveau</h2>
+          <div class="h-80">
+            <canvas id="studentsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Meeting frequency chart -->
+        <div class="bg-white p-6 rounded-lg shadow">
+          <h2 class="text-lg font-medium text-gray-900 mb-4">Fréquence des réunions</h2>
+          <div class="h-80">
+            <canvas id="meetingsChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance metrics -->
+      <div class="bg-white p-6 rounded-lg shadow mb-8">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Indicateurs de performance</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Délai moyen de correction</h3>
+            <p class="text-2xl font-semibold text-gray-800">2.3 jours</p>
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div class="bg-green-600 h-2 rounded-full" style="width: 65%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Objectif: < 3 jours</p>
+          </div>
+          <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Taux de satisfaction</h3>
+            <p class="text-2xl font-semibold text-gray-800">4.7/5</p>
+            <div class="flex mt-2">
+              <i data-feather="star" class="h-4 w-4 text-yellow-400 fill-current"></i>
+              <i data-feather="star" class="h-4 w-4 text-yellow-400 fill-current"></i>
+              <i data-feather="star" class="h-4 w-4 text-yellow-400 fill-current"></i>
+              <i data-feather="star" class="h-4 w-4 text-yellow-400 fill-current"></i>
+              <i data-feather="star" class="h-4 w-4 text-yellow-400 fill-current"></i>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Basé sur 23 évaluations</p>
+          </div>
+          <div class="p-4 border rounded-lg">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Engagement des étudiants</h3>
+            <p class="text-2xl font-semibold text-gray-800">78%</p>
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div class="bg-blue-600 h-2 rounded-full" style="width: 78%"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">Moyenne de connexion par semaine</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top performers -->
+      <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Meilleurs étudiants</h2>
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Étudiant</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Niveau</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avancement</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <img class="h-8 w-8 rounded-full mr-2" src="http://static.photos/people/200x200/2" alt="">
+                    <div class="text-sm font-medium text-gray-900">Jean Dupont</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Système de gestion académique</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">M1</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 65%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">65% complété</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">92/100</span>
+                </td>
+              </tr>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <img class="h-8 w-8 rounded-full mr-2" src="http://static.photos/people/200x200/3" alt="">
+                    <div class="text-sm font-medium text-gray-900">Marie Martin</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Plateforme e-learning</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">L1</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-green-600 h-2.5 rounded-full" style="width: 40%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">40% complété</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">88/100</span>
+                </td>
+              </tr>
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <img class="h-8 w-8 rounded-full mr-2" src="http://static.photos/people/200x200/5" alt="">
+                    <div class="text-sm font-medium text-gray-900">Thomas Bernard</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Application IoT</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">M1</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 75%"></div>
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">75% complété</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">85/100</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Initialize libraries
+    AOS.init();
+    feather.replace();
+
+    // Initialize charts after page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Project progress chart
+      const progressCtx = document.getElementById('progressChart').getContext('2d');
+      new Chart(progressCtx, {
+        type: 'bar',
+        data: {
+          labels: ['Système de gestion', 'Plateforme e-learning', 'Application mobile', 'Application IoT', 'IA pour éducation'],
+          datasets: [{
+            label: 'Pourcentage complété',
+            data: [65, 40, 25, 75, 50],
+            backgroundColor: [
+              'rgba(59, 130, 246, 0.7)',
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(245, 158, 11, 0.7)',
+              'rgba(139, 92, 246, 0.7)',
+              'rgba(236, 72, 153, 0.7)'
+            ],
+            borderColor: [
+              'rgb(59, 130, 246)',
+              'rgb(16, 185, 129)',
+              'rgb(245, 158, 11)',
+              'rgb(139, 92, 246)',
+              'rgb(236, 72, 153)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: {
+                callback: function(value) {
+                  return value + '%';
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // Deliverables status chart
+      const deliverablesCtx = document.getElementById('deliverablesChart').getContext('2d');
+      new Chart(deliverablesCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Validés', 'En attente', 'En retard', 'À venir'],
+          datasets: [{
+            data: [12, 8, 4, 10],
+            backgroundColor: [
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(245, 158, 11, 0.7)',
+              'rgba(239, 68, 68, 0.7)',
+              'rgba(59, 130, 246, 0.7)'
+            ],
+            borderColor: [
+              'rgb(16, 185, 129)',
+              'rgb(245, 158, 11)',
+              'rgb(239, 68, 68)',
+              'rgb(59, 130, 246)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Students distribution chart
+      const studentsCtx = document.getElementById('studentsChart').getContext('2d');
+      new Chart(studentsCtx, {
+        type: 'pie',
+        data: {
+          labels: ['L1', 'L2', 'L3', 'M1', 'M2'],
+          datasets: [{
+            data: [6, 4, 3, 8, 2],
+            backgroundColor: [
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(59, 130, 246, 0.7)',
+              'rgba(139, 92, 246, 0.7)',
+              'rgba(245, 158, 11, 0.7)',
+              'rgba(236, 72, 153, 0.7)'
+            ],
+            borderColor: [
+              'rgb(16, 185, 129)',
+              'rgb(59, 130, 246)',
+              'rgb(139, 92, 246)',
+              'rgb(245, 158, 11)',
+              'rgb(236, 72, 153)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
+
+      // Meetings frequency chart
+      const meetingsCtx = document.getElementById('meetingsChart').getContext('2d');
+      new Chart(meetingsCtx, {
+        type: 'line',
+        data: {
+          labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'],
+          datasets: [{
+            label: 'Réunions par mois',
+            data: [8, 10, 12, 15, 14, 18, 5, 3, 10, 12, 15, 17],
+            fill: false,
+            borderColor: 'rgb(59, 130, 246)',
+            tension: 0.1,
+            pointBackgroundColor: 'rgb(59, 130, 246)',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Nombre de réunions'
+              }
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

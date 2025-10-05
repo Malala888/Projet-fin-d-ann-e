@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Étudiants - ENI Academic Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+<body class="bg-gray-50 font-sans">
+  <!-- Navbar -->
+  <nav class="bg-blue-700 text-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <i data-feather="book-open" class="h-8 w-8"></i>
+          <div class="hidden md:block ml-10 space-x-4">
+            <p class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">Gestion de Projet</p>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center space-x-4">
+          <button class="p-1 rounded-full text-blue-200 hover:text-white relative">
+            <i data-feather="bell"></i>
+            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+          </button>
+          <div class="flex items-center">
+            <img class="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+            <span class="ml-2 text-sm font-medium">John Doe</span>
+            <i data-feather="chevron-down" class="ml-1 h-4 w-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="flex">
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen border-r hidden md:block">
+      <div class="p-4 border-b flex items-center">
+        <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/1" alt="">
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-700">John Doe</p>
+          <p class="text-xs text-gray-500">Enseignant</p>
+        </div>
+      </div>
+      <nav class="p-4 space-y-1">
+        <a href="index.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="home" class="mr-3 h-5 w-5"></i> Dashboard
+        </a>
+        <a href="etudiant.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
+          <i data-feather="users" class="mr-3 h-5 w-5"></i> Étudiants
+        </a>
+        <a href="project.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="briefcase" class="mr-3 h-5 w-5"></i> Projets
+        </a>
+        <a href="calendrier.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="calendar" class="mr-3 h-5 w-5"></i> Calendrier
+        </a>
+        <a href="livrable.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="file-text" class="mr-3 h-5 w-5"></i> Livrables
+        </a>
+        <a href="statistique.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50">
+          <i data-feather="bar-chart-2" class="mr-3 h-5 w-5"></i> Statistiques
+        </a>
+        <div class="mt-8">
+                    <h3 class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        Administration
+                    </h3>
+                    <div class="mt-1 space-y-1">
+                        <a href="parametre.html" class="flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                            <i data-feather="settings" class="mr-3 h-5 w-5"></i>
+                            Paramètres
+                        </a>
+                    </div>
+                </div>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 p-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-6">Liste des étudiants encadrés</h1>
+      <div class="overflow-x-auto bg-white shadow rounded-lg">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Étudiant</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Projet</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Niveau</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Avancement</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 flex items-center">
+                <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="">
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900">Jean Dupont</div>
+                  <div class="text-sm text-gray-500">jean.dupont@eni.fr</div>
+                </div>
+              </td>
+              <td class="px-6 py-4">Système de gestion académique</td>
+              <td class="px-6 py-4"><span class="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">M1</span></td>
+              <td class="px-6 py-4">65%</td>
+              <td class="px-6 py-4"><a href="etudiant-detail.html" class="text-blue-600 hover:text-blue-900">Détails</a></td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-4 flex items-center">
+                <img class="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/3" alt="">
+                <div class="ml-4">
+                  <div class="text-sm font-medium text-gray-900">Marie Martin</div>
+                  <div class="text-sm text-gray-500">marie.martin@eni.fr</div>
+                </div>
+              </td>
+              <td class="px-6 py-4">Plateforme e-learning</td>
+              <td class="px-6 py-4"><span class="px-2 py-1 rounded bg-green-100 text-green-700 text-xs">L1</span></td>
+              <td class="px-6 py-4">40%</td>
+              <td class="px-6 py-4"><a href="etudiant-detail.html" class="text-blue-600 hover:text-blue-900">Détails</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script>AOS.init(); feather.replace();</script>
+</body>
+</html>
