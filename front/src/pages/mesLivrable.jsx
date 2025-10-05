@@ -74,9 +74,12 @@ const MesLivrables = () => {
     const todayTimestamp = now.getTime();
 
     return data.map((liv) => {
-      const hasFichier =
-        (liv.Fichier && String(liv.Fichier).trim() !== "") ||
-        (liv.Chemin_fichier && String(liv.Chemin_fichier).trim() !== "");
+      const hasFichier = !!(
+        liv.Chemin_fichier &&
+        String(liv.Chemin_fichier).trim() !== "" &&
+        liv.Chemin_fichier !== "null" &&
+        liv.Chemin_fichier !== "undefined"
+      );
 
       let dateSoumissionTimestamp = 0;
       if (liv.Date_soumission) {
@@ -176,23 +179,51 @@ const MesLivrables = () => {
     ];
   }, []);
 
-  const handleDownloadFile = async (livrableId) => {
+  const handleDownloadFile = async (livrableId, titre) => {
     try {
-      const response = await axios.get(
-        `http://localhost:5000/livrables/${livrableId}/download`,
-        { responseType: "blob" }
-      );
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
+      console.log(`📥 Début téléchargement livrable ${livrableId}`);
+
+      // Faire une requête fetch pour obtenir le fichier
+      const response = await fetch(`http://localhost:5000/livrables/${livrableId}/download`);
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      // Récupérer le nom du fichier depuis les headers
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = titre || `livrable_${livrableId}`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      // Convertir la réponse en blob
+      const blob = await response.blob();
+
+      // Créer une URL pour le blob
+      const url = window.URL.createObjectURL(blob);
+
+      // Créer un lien temporaire et déclencher le téléchargement
+      const link = document.createElement('a');
       link.href = url;
-      link.setAttribute("download", `livrable_${livrableId}`);
+      link.download = filename;
+      link.style.display = 'none';
+
       document.body.appendChild(link);
       link.click();
-      link.remove();
+
+      // Nettoyer
+      document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      console.log(`✅ Téléchargement réussi: ${filename}`);
     } catch (error) {
-      console.error("Erreur lors du téléchargement :", error);
-      alert("Erreur lors du téléchargement du fichier");
+      console.error('Erreur lors du téléchargement :', error);
+      alert('Erreur lors du téléchargement du fichier. Veuillez réessayer.');
     }
   };
 
@@ -563,11 +594,12 @@ const MesLivrables = () => {
                             >
                                 <i data-feather="trash-2" className="h-4 w-4"></i>
                             </button>
-                            {liv.hasFichier && (
+                            {/* Afficher le bouton si le statut est Validé OU s'il y a un fichier */}
+                            {(liv.categories.includes("Validé") || liv.hasFichier) && (
                                 <button
                                 className="p-1 text-blue-600 hover:text-blue-800"
                                 title="Télécharger"
-                                onClick={() => handleDownloadFile(liv.Id_livrable)}
+                                onClick={() => handleDownloadFile(liv.Id_livrable, liv.title)}
                                 >
                                 <i data-feather="download" className="h-4 w-4"></i>
                                 </button>

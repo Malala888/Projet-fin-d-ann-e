@@ -14,6 +14,13 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    console.log(`📁 Serving static file: ${filePath}`);
+  }
+}));
+
 // Logger global
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.path} - ${new Date().toISOString()}`);
@@ -256,15 +263,131 @@ app.delete("/livrables/:id", async (req, res) => {
   }
 });
 
-// DOWNLOAD livrable
+// DOWNLOAD livrable - VERSION OPTIMISÉE
 app.get("/livrables/:id/download", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT Chemin_fichier FROM livrable WHERE Id_livrable=?", [req.params.id]);
-    if (rows.length === 0 || !rows[0].Chemin_fichier) return res.status(404).json({ error: "Fichier non trouvé" });
-    const filePath = path.resolve(__dirname, "." + rows[0].Chemin_fichier);
-    res.download(filePath);
+    const [rows] = await pool.query(
+      "SELECT Chemin_fichier, Nom, Titre FROM livrable WHERE Id_livrable=?",
+      [req.params.id]
+    );
+
+    if (rows.length === 0 || !rows[0].Chemin_fichier) {
+      console.error(`❌ Livrable ${req.params.id} non trouvé ou sans fichier`);
+      return res.status(404).json({ error: "Fichier non trouvé" });
+    }
+
+    // Construire le chemin complet du fichier
+    const relativePath = rows[0].Chemin_fichier.replace('/uploads/', '');
+    const filePath = path.join(__dirname, 'uploads', relativePath);
+
+    // Vérifier si le fichier existe
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ Fichier physique non trouvé: ${filePath}`);
+      return res.status(404).json({ error: "Fichier non trouvé sur le serveur" });
+    }
+
+    console.log(`✅ Fichier trouvé: ${filePath}`);
+
+    // Obtenir l'extension et le nom original
+    const fileExt = path.extname(filePath).toLowerCase();
+    const fileName = path.basename(filePath);
+
+    // Utiliser le titre ou le nom comme nom de téléchargement
+    let downloadName = rows[0].Titre || rows[0].Nom || fileName;
+
+    // S'assurer que le nom a une extension
+    if (!path.extname(downloadName)) {
+      downloadName += fileExt;
+    }
+
+    // Types MIME pour tous les formats courants
+    const mimeTypes = {
+      // Documents
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.odt': 'application/vnd.oasis.opendocument.text',
+      '.rtf': 'application/rtf',
+
+      // Présentations
+      '.ppt': 'application/vnd.ms-powerpoint',
+      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      '.odp': 'application/vnd.oasis.opendocument.presentation',
+
+      // Feuilles de calcul
+      '.xls': 'application/vnd.ms-excel',
+      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
+      '.csv': 'text/csv',
+
+      // Texte
+      '.txt': 'text/plain',
+
+      // Images
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.bmp': 'image/bmp',
+      '.svg': 'image/svg+xml',
+      '.webp': 'image/webp',
+
+      // Archives
+      '.zip': 'application/zip',
+      '.rar': 'application/x-rar-compressed',
+      '.7z': 'application/x-7z-compressed',
+      '.tar': 'application/x-tar',
+      '.gz': 'application/gzip',
+
+      // Autres
+      '.json': 'application/json',
+      '.xml': 'application/xml',
+      '.html': 'text/html',
+      '.css': 'text/css',
+      '.js': 'application/javascript'
+    };
+
+    const contentType = mimeTypes[fileExt] || 'application/octet-stream';
+
+    // Encoder correctement le nom du fichier pour éviter les problèmes avec les caractères spéciaux
+    const encodedFileName = encodeURIComponent(downloadName);
+
+    // Définir les headers appropriés
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedFileName}`);
+    res.setHeader('Content-Transfer-Encoding', 'binary');
+    res.setHeader('Content-Length', fs.statSync(filePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // CORS headers pour permettre le téléchargement depuis le frontend
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+
+    console.log(`📥 Téléchargement: ${downloadName} (${contentType}) - Taille: ${fs.statSync(filePath).size} bytes`);
+
+    // Créer un stream de lecture et l'envoyer au client
+    const fileStream = fs.createReadStream(filePath);
+
+    fileStream.on('error', (error) => {
+      console.error('❌ Erreur lors de la lecture du fichier:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Erreur lors de la lecture du fichier" });
+      }
+    });
+
+    fileStream.on('end', () => {
+      console.log(`✅ Téléchargement terminé: ${downloadName}`);
+    });
+
+    // Envoyer le fichier
+    fileStream.pipe(res);
+
   } catch (err) {
-    res.status(500).json({ error: "Erreur téléchargement" });
+    console.error("❌ Erreur téléchargement:", err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Erreur lors du téléchargement", details: err.message });
+    }
   }
 });
 
