@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import feather from 'feather-icons';
 
 const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAModifier, etudiantId }) => {
     const [nom, setNom] = useState('');
@@ -7,23 +6,35 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
     const [projetId, setProjetId] = useState('');
     const [fichier, setFichier] = useState(null);
     const [error, setError] = useState('');
-    
-    // Ajout du statut pour affichage (bien que la modification se fasse principalement par le formulaire ici)
-    const [status, setStatus] = useState(''); 
+
+    // Fonction simplifiée pour formater la date pour l'input
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return "";
+        
+        // Extraire seulement la partie YYYY-MM-DD
+        const datePart = String(dateString).split('T')[0];
+        
+        // Vérifier que c'est un format valide
+        if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+            return datePart;
+        }
+        
+        return "";
+    };
 
     // Pré-remplir les champs quand le livrable à modifier change
     useEffect(() => {
         if (livrableAModifier) {
-            setNom(livrableAModifier.title || '');
+            console.log("📝 Chargement du livrable:", livrableAModifier);
             
-            // Convertir la date au format YYYY-MM-DD pour l'input date
-            if (livrableAModifier.Date_soumission) {
-                const date = new Date(livrableAModifier.Date_soumission);
-                const dateFormatee = date.toISOString().split('T')[0];
-                setDateSoumission(dateFormatee);
-            }
+            setNom(livrableAModifier.title || livrableAModifier.Nom || livrableAModifier.Titre || '');
             
-            // Trouver l'ID du projet à partir du nom ou de l'ID existant
+            // Formater la date
+            const dateFormatted = formatDateForInput(livrableAModifier.Date_soumission);
+            console.log("📅 Date formatée pour input:", dateFormatted);
+            setDateSoumission(dateFormatted);
+            
+            // Trouver l'ID du projet
             let currentProjetId = livrableAModifier.Id_projet;
             if (!currentProjetId && livrableAModifier.project) {
                 const projet = projets.find(p => p.Theme === livrableAModifier.project);
@@ -35,40 +46,51 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
             if (currentProjetId) {
                 setProjetId(currentProjetId.toString());
             }
-            
-            setStatus(livrableAModifier.status || livrableAModifier.Status || 'En attente');
         }
     }, [livrableAModifier, projets]);
 
-    useEffect(() => {
-        feather.replace();
-    });
-
     const handleSubmit = (e) => {
         e.preventDefault();
+        
         if (!nom || !dateSoumission || !projetId) {
             setError('Veuillez remplir tous les champs obligatoires.');
             return;
         }
+        
         setError('');
 
         const formData = new FormData();
-
-        // Champs envoyés avec les noms attendus par le serveur
         formData.append('Nom', nom);
         formData.append('Titre', nom);
-        formData.append('Date_soumission', dateSoumission);
+        formData.append('Date_soumission', dateSoumission); // Format YYYY-MM-DD
         formData.append('Id_projet', projetId);
         formData.append('Id_etudiant', livrableAModifier.Id_etudiant || etudiantId);
         
-        // Si un nouveau fichier est sélectionné
+        // Ajouter le fichier si présent
         if (fichier) {
-            formData.append('fichier', fichier); // 'fichier' doit correspondre au nom attendu par multer
+            formData.append('fichier', fichier);
         }
 
-        // Si le statut a été modifié manuellement (moins courant pour l'étudiant, mais possible)
-        if (status) {
-            formData.append('status', status);
+        console.log("📤 Envoi des données:", {
+            Nom: nom,
+            Date_soumission: dateSoumission,
+            Id_projet: projetId,
+            Id_etudiant: livrableAModifier.Id_etudiant || etudiantId,
+            fichier: fichier ? fichier.name : 'aucun'
+        });
+
+        // Logging détaillé pour la date
+        console.log("📅 DÉTAILS DATE AVANT ENVOI:");
+        console.log(`  Date sélectionnée: ${dateSoumission}`);
+        console.log(`  Type: ${typeof dateSoumission}`);
+
+        try {
+          const dateObj = new Date(dateSoumission);
+          console.log(`  Date parsée: ${dateObj.toISOString()}`);
+          console.log(`  Date locale: ${dateObj.toLocaleDateString('fr-FR')}`);
+          console.log(`  Timestamp: ${dateObj.getTime()}`);
+        } catch (dateError) {
+          console.error(`  ❌ Erreur parsing date avant envoi:`, dateError);
         }
 
         onSubmit(livrableAModifier.Id_livrable, formData);
@@ -80,11 +102,16 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
             <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-lg">
                 <div className="flex justify-between items-center border-b pb-3 mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Modifier le Livrable : {livrableAModifier.title}</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">
+                        Modifier le Livrable
+                    </h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                        <i data-feather="x" className="w-6 h-6"></i>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
+                
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-4">
                         <div>
@@ -100,6 +127,7 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
                                 required
                             />
                         </div>
+                        
                         <div>
                             <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
                                 Date de Soumission <span className="text-red-500">*</span>
@@ -108,11 +136,15 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
                                 type="date"
                                 id="date"
                                 value={dateSoumission}
-                                onChange={(e) => setDateSoumission(e.target.value)}
+                                onChange={(e) => {
+                                    console.log("📅 Nouvelle date sélectionnée:", e.target.value);
+                                    setDateSoumission(e.target.value);
+                                }}
                                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                                 required
                             />
                         </div>
+                        
                         <div>
                             <label htmlFor="projet" className="block text-sm font-medium text-gray-700 mb-1">
                                 Projet Associé <span className="text-red-500">*</span>
@@ -144,11 +176,13 @@ const ModalModifierLivrable = ({ isOpen, onClose, onSubmit, projets, livrableAMo
                                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                Laissez vide pour conserver le fichier actuel. Fichier existant: {livrableAModifier.hasFichier ? 'Oui' : 'Non'}
+                                Laissez vide pour conserver le fichier actuel
                             </p>
                         </div>
                     </div>
+                    
                     {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
+                    
                     <div className="mt-6 flex justify-end space-x-3">
                         <button 
                             type="button" 

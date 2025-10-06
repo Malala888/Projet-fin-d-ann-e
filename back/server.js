@@ -14,6 +14,16 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// DÉSACTIVER LE CACHE POUR TOUTES LES REQUÊTES GET
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, filePath) => {
@@ -207,43 +217,118 @@ app.post("/livrables", upload.single("fichier"), async (req, res) => {
   }
 });
 
-// UPDATE livrable
+// UPDATE livrable - VERSION CORRIGÉE
 app.put("/livrables/:id", upload.single("fichier"), async (req, res) => {
   try {
     const { Nom, Titre, Id_projet, Id_etudiant, Date_soumission, Status } = req.body;
 
-    // Get current livrable data to preserve status if needed
-    const [currentRows] = await pool.query("SELECT Status, Chemin_fichier, Id_encadreur FROM livrable WHERE Id_livrable=?", [req.params.id]);
+    console.log("📝 Données reçues pour modification:", {
+      Id_livrable: req.params.id,
+      Nom,
+      Titre,
+      Date_soumission,
+      Id_projet,
+      Status,
+      fichier: req.file ? req.file.filename : "aucun"
+    });
+
+    // Logging détaillé pour la date
+    console.log("📅 DÉTAILS DATE REÇUE DU FRONTEND:");
+    console.log(`  Date_soumission reçue: ${Date_soumission}`);
+    console.log(`  Type: ${typeof Date_soumission}`);
+
+    try {
+      const dateObj = new Date(Date_soumission);
+      console.log(`  Date parsée: ${dateObj.toISOString()}`);
+      console.log(`  Date locale: ${dateObj.toLocaleDateString('fr-FR')}`);
+      console.log(`  Timestamp: ${dateObj.getTime()}`);
+    } catch (dateError) {
+      console.error(`  ❌ Erreur parsing date reçue:`, dateError);
+    }
+
+    // Récupérer les données actuelles du livrable
+    const [currentRows] = await pool.query(
+      "SELECT Status, Chemin_fichier, Id_encadreur, Type, Taille_fichier FROM livrable WHERE Id_livrable=?",
+      [req.params.id]
+    );
+    
+    if (currentRows.length === 0) {
+      return res.status(404).json({ error: "Livrable non trouvé" });
+    }
+
     const currentLivrable = currentRows[0];
 
-    let chemin_fichier = currentLivrable ? currentLivrable.Chemin_fichier : null;
-    let type = null, taille = null;
+    // Gestion du fichier
+    let chemin_fichier = currentLivrable.Chemin_fichier;
+    let type = currentLivrable.Type;
+    let taille = currentLivrable.Taille_fichier;
 
     if (req.file) {
       chemin_fichier = `/uploads/${req.file.filename}`;
       type = req.file.mimetype;
       taille = (req.file.size / 1024 / 1024).toFixed(2) + "MB";
+      
+      console.log("📁 Nouveau fichier uploadé:", chemin_fichier);
     }
 
-    // Determine the status to use
-    let finalStatus = Status;
-    if (!finalStatus && currentLivrable) {
-      // If no status provided, keep the current one
-      finalStatus = currentLivrable.Status;
-    } else if (!finalStatus) {
-      // If no current status and no new status, default to "Soumis"
-      finalStatus = "Soumis";
-    }
+    // Gestion du statut
+    let finalStatus = Status || currentLivrable.Status || "Soumis";
 
+    // Requête de mise à jour
     const [result] = await pool.query(
-      `UPDATE livrable SET Id_projet=?, Id_etudiant=?, Id_encadreur=?, Nom=?, Titre=?,
-       Type=?, Taille_fichier=?, Date_soumission=?, Status=?, Chemin_fichier=? WHERE Id_livrable=?`,
-      [Id_projet, Id_etudiant, currentLivrable.Id_encadreur, Nom, Titre, type, taille, Date_soumission, finalStatus, chemin_fichier, req.params.id]
+      `UPDATE livrable
+       SET Id_projet=?,
+           Id_etudiant=?,
+           Id_encadreur=?,
+           Nom=?,
+           Titre=?,
+           Type=?,
+           Taille_fichier=?,
+           Date_soumission=?,
+           Status=?,
+           Chemin_fichier=?
+       WHERE Id_livrable=?`,
+      [
+        Id_projet,
+        Id_etudiant,
+        currentLivrable.Id_encadreur,
+        Nom,
+        Titre,
+        type,
+        taille,
+        Date_soumission,
+        finalStatus,
+        chemin_fichier,
+        req.params.id
+      ]
     );
-    res.json({ message: "Livrable modifié", affected: result.affectedRows });
+
+    console.log(`✅ Livrable ${req.params.id} modifié avec succès:`, {
+      Date_soumission,
+      Status: finalStatus,
+      affectedRows: result.affectedRows
+    });
+
+    // Vérifier que la modification a bien eu lieu
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: "Aucune modification effectuée" });
+    }
+
+    res.json({
+      message: "Livrable modifié avec succès",
+      affected: result.affectedRows,
+      data: {
+        Date_soumission,
+        Status: finalStatus
+      }
+    });
+
   } catch (err) {
-    console.error("Erreur modification livrable:", err);
-    res.status(500).json({ error: "Erreur modification livrable", details: err.message });
+    console.error("❌ Erreur modification livrable:", err);
+    res.status(500).json({
+      error: "Erreur modification livrable",
+      details: err.message
+    });
   }
 });
 

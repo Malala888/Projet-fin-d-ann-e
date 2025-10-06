@@ -5,8 +5,12 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import axios from "axios";
 import ModalAjoutLivrable from "./ModalAjoutLivrable";
-// ✨ 1. Importer le nouveau modal de modification
-import ModalModifierLivrable from "./ModalModifierLivrable"; 
+import ModalModifierLivrable from "./ModalModifierLivrable";
+
+// CONFIGURATION AXIOS POUR DÉSACTIVER LE CACHE
+axios.defaults.headers.get['Cache-Control'] = 'no-cache';
+axios.defaults.headers.get['Pragma'] = 'no-cache';
+axios.defaults.headers.get['Expires'] = '0';
 
 const normalizeStatus = (status) => {
   if (!status) return "";
@@ -28,14 +32,13 @@ const MesLivrables = () => {
 
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // State pour le modal d'ajout
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // ✨ 2. Nouveaux états pour le modal de modification
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [livrableSelectionne, setLivrableSelectionne] = useState(null);
 
+  // CLÉ POUR FORCER LE RE-RENDER DE LA LISTE
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
@@ -45,7 +48,7 @@ const MesLivrables = () => {
   const getStatusClasses = (category) => {
     const normalized = normalizeStatus(category);
 
-    if (normalized === "validé" || normalized === "contient fichier") {
+    if (normalized === "validé" || normalized === "contient fichier" || normalized === "valide") {
       return {
         statusColor: "bg-green-100 text-green-800",
         label: "Validé",
@@ -90,7 +93,6 @@ const MesLivrables = () => {
         }
       }
 
-      // Utiliser le statut de la base de données s'il existe, sinon déterminer basé sur les fichiers
       let status = liv.Status;
       if (!status) {
         if (hasFichier) {
@@ -102,7 +104,6 @@ const MesLivrables = () => {
         }
       }
 
-      // Déterminer les catégories multiples basées sur le statut et la date
       let categories = [];
       const normalizedStatus = normalizeStatus(status);
 
@@ -118,19 +119,36 @@ const MesLivrables = () => {
 
       return {
         ...liv,
-        title:
-          liv.Titre ||
-          liv.Titre_livrable ||
-          liv.Nom ||
-          `Livrable #${liv.Id_livrable}`,
+        title: liv.Titre || liv.Titre_livrable || liv.Nom || `Livrable #${liv.Id_livrable}`,
         project: liv.Nom_projet || liv.Projet || "Projet Inconnu",
         date: liv.Date_soumission
-          ? new Date(liv.Date_soumission).toLocaleDateString("fr-FR")
+          ? (() => {
+              try {
+                console.log(`🔍 FORMATAGE DATE pour ${liv.title}:`);
+                console.log(`  Date originale: ${liv.Date_soumission}`);
+
+                // Utiliser la même logique que projetDetail.jsx pour la cohérence
+                const dateObj = new Date(liv.Date_soumission);
+                if (!isNaN(dateObj.getTime())) {
+                  const formattedDate = dateObj.toLocaleDateString('fr-FR');
+                  console.log(`  Date formatée (toLocaleDateString): ${formattedDate}`);
+                  console.log(`  Date ISO: ${dateObj.toISOString()}`);
+                  return formattedDate;
+                }
+
+                console.log(`  ❌ Date invalide après parsing`);
+                return "Date invalide";
+              } catch (error) {
+                console.error("❌ Erreur formatage date:", error, "pour:", liv.Date_soumission);
+                return "Erreur date";
+              }
+            })()
           : "Non défini",
         categories,
         hasFichier,
         isFuture: dateSoumissionTimestamp > todayTimestamp,
         originalStatus: status,
+        Date_soumission: liv.Date_soumission,
       };
     });
   }, []);
@@ -181,16 +199,14 @@ const MesLivrables = () => {
 
   const handleDownloadFile = async (livrableId, titre) => {
     try {
-      console.log(`📥 Début téléchargement livrable ${livrableId}`);
+      console.log(`Debut téléchargement livrable ${livrableId}`);
 
-      // Faire une requête fetch pour obtenir le fichier
       const response = await fetch(`http://localhost:5000/livrables/${livrableId}/download`);
 
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
 
-      // Récupérer le nom du fichier depuis les headers
       const contentDisposition = response.headers.get('Content-Disposition');
       let filename = titre || `livrable_${livrableId}`;
 
@@ -201,13 +217,8 @@ const MesLivrables = () => {
         }
       }
 
-      // Convertir la réponse en blob
       const blob = await response.blob();
-
-      // Créer une URL pour le blob
       const url = window.URL.createObjectURL(blob);
-
-      // Créer un lien temporaire et déclencher le téléchargement
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
@@ -215,12 +226,10 @@ const MesLivrables = () => {
 
       document.body.appendChild(link);
       link.click();
-
-      // Nettoyer
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      console.log(`✅ Téléchargement réussi: ${filename}`);
+      console.log(`Téléchargement réussi: ${filename}`);
     } catch (error) {
       console.error('Erreur lors du téléchargement :', error);
       alert('Erreur lors du téléchargement du fichier. Veuillez réessayer.');
@@ -239,10 +248,10 @@ const MesLivrables = () => {
     }
   };
 
-  // ✨ 3. Mettre à jour la fonction pour ouvrir le modal de MODIFICATION
   const handleEditLivrable = (livrable) => {
-    setLivrableSelectionne(livrable); // Mémoriser le livrable à éditer
-    setIsEditModalOpen(true); // Ouvrir le modal de modification
+    console.log("Ouverture du modal de modification pour:", livrable);
+    setLivrableSelectionne(livrable);
+    setIsEditModalOpen(true);
   };
 
   const handleAjoutLivrable = async (formData) => {
@@ -263,48 +272,132 @@ const MesLivrables = () => {
       );
     }
   };
-  
-  // ✨ 4. Nouvelle fonction pour gérer la soumission de la modification
+
+  // ✅ FONCTION CORRIGÉE POUR LA MODIFICATION - VERSION ULTRA-AGRESSIVE
   const handleUpdateLivrable = async (livrableId, formData) => {
     try {
-      await axios.put(`http://localhost:5000/livrables/${livrableId}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      alert("Livrable modifié avec succès !");
-      setIsEditModalOpen(false); // Fermer le modal de modification
-      setLivrableSelectionne(null); // Réinitialiser la sélection
-      fetchData(); // Rafraîchir les données
-    } catch (error) {
-      console.error("Erreur lors de la modification du livrable :", error);
-      alert(
-        "Erreur lors de la modification du livrable : " +
-          (error.response?.data?.error || error.message)
+      console.log("🚀 === DÉBUT MODIFICATION ULTRA-AGRESSIVE ===");
+      console.log("ID du livrable:", livrableId);
+
+      // Afficher tout le contenu du FormData
+      console.log("📝 Contenu du FormData:");
+      for (let pair of formData.entries()) {
+        console.log(`  ${pair[0]}: ${pair[1]}`);
+
+        // Logging spécial pour la date
+        if (pair[0] === 'Date_soumission') {
+          console.log(`  📅 DATE SOUMISSION DÉTAILLÉE:`);
+          console.log(`    Valeur reçue: ${pair[1]}`);
+          console.log(`    Type: ${typeof pair[1]}`);
+
+          // Essayer de parser la date
+          try {
+            const dateObj = new Date(pair[1]);
+            console.log(`    Date parsée: ${dateObj.toISOString()}`);
+            console.log(`    Date locale: ${dateObj.toLocaleDateString('fr-FR')}`);
+          } catch (dateError) {
+            console.error(`    ❌ Erreur parsing date:`, dateError);
+          }
+        }
+      }
+
+      // Envoyer la requête
+      const response = await axios.put(
+        `http://localhost:5000/livrables/${livrableId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
+
+      console.log("✅ Réponse du serveur:", response.data);
+      console.log("🚀 === FIN MODIFICATION ===");
+
+      alert("Livrable modifié avec succès !");
+
+      // Fermer le modal
+      setIsEditModalOpen(false);
+      setLivrableSelectionne(null);
+
+      // APPROCHE ULTRA-AGRESSIVE POUR FORCER LE RAFRAÎCHISSEMENT
+      console.log("🔥 RAFRAÎCHISSEMENT AGRESSIF...");
+
+      // 1. Forcer le rechargement avec un timestamp unique
+      const newTimestamp = new Date().getTime();
+      console.log("🔄 Timestamp unique:", newTimestamp);
+
+      // 2. Incrémenter la clé de refresh pour forcer le re-render
+      setRefreshKey(prev => prev + 1);
+
+      // 3. Recharger les données de manière agressive
+      setTimeout(async () => {
+        console.log("💪 RECHARGEMENT AGRESSIF - Phase 1");
+        setLivrables([]); // Vider d'abord
+        setStats([]);
+        await fetchData();
+
+        // Double vérification après 1 seconde
+        setTimeout(async () => {
+          console.log("💪 RECHARGEMENT AGRESSIF - Phase 2");
+          await fetchData();
+        }, 1000);
+      }, 300);
+
+    } catch (error) {
+      console.error("❌ === ERREUR MODIFICATION ===");
+      console.error("Erreur complète:", error);
+      console.error("Réponse du serveur:", error.response?.data);
+
+      const errorMessage = error.response?.data?.error
+        || error.response?.data?.details
+        || error.message
+        || "Erreur inconnue";
+
+      alert("Erreur lors de la modification : " + errorMessage);
     }
   };
 
   const fetchData = useCallback(async () => {
     if (!etudiant) return;
     try {
+      console.log("🔄 Récupération des données pour l'étudiant:", etudiant.Immatricule);
+
+      // AJOUTER UN TIMESTAMP POUR ÉVITER LE CACHE
+      const timestamp = new Date().getTime();
+      console.log("🕒 Timestamp généré:", timestamp);
+
       const [livrablesResponse, projetsResponse] = await Promise.all([
-        axios.get(
-          `http://localhost:5000/etudiants/${etudiant.Immatricule}/livrables`
-        ),
-        axios.get(
-          `http://localhost:5000/etudiants/${etudiant.Immatricule}/projets`
-        ),
+        axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/livrables?_=${timestamp}`),
+        axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/projets?_=${timestamp}`),
       ]);
 
+      console.log("📦 DONNÉES BRUTES REÇUES:");
+      console.log("Nombre de livrables:", livrablesResponse.data.length);
+      console.log("Livrables reçus:", livrablesResponse.data);
+
+      // Vérifier si les données ont changé
+      console.log("🔍 VÉRIFICATION DES DATES:");
+      livrablesResponse.data.forEach((liv, index) => {
+        console.log(`Livrable ${index + 1}: ID=${liv.Id_livrable}, Date=${liv.Date_soumission}, Titre=${liv.Titre}`);
+      });
+
       const formattedLivrables = formatLivrables(livrablesResponse.data);
+      console.log("📋 DONNÉES FORMATÉES:");
+      console.log("Nombre après formatage:", formattedLivrables.length);
+      formattedLivrables.forEach((liv, index) => {
+        console.log(`Formaté ${index + 1}: titre=${liv.title}, date=${liv.date}, projet=${liv.project}`);
+      });
+
       setLivrables(formattedLivrables);
       setStats(calculateStats(formattedLivrables));
       setProjets(projetsResponse.data);
 
+      console.log("✅ STATE MIS À JOUR - Nouvelles données appliquées");
       setTimeout(() => feather.replace(), 0);
     } catch (error) {
-      console.error("Erreur lors de la récupération des données :", error);
+      console.error("❌ Erreur lors de la récupération des données :", error);
     } finally {
       setLoading(false);
     }
@@ -312,7 +405,6 @@ const MesLivrables = () => {
 
   const filteredLivrables = livrables.filter((livrable) => {
     if (activeFilter === "Tous") return true;
-
     const normalizedFilter = normalizeStatus(activeFilter);
     return livrable.categories.some(
       (cat) => normalizeStatus(cat) === normalizedFilter
@@ -327,6 +419,31 @@ const MesLivrables = () => {
     }
     return true;
   });
+
+  // DEBUG: Afficher les données filtrées
+  console.log("🔍 DONNÉES FILTRÉES:");
+  console.log("Filtre actif:", activeFilter);
+  console.log("Recherche:", searchQuery);
+  console.log("Nombre de livrables affichés:", filteredLivrables.length);
+  filteredLivrables.forEach((liv, index) => {
+    console.log(`Affiché ${index + 1}: ${liv.title} - ${liv.date} - ${liv.project}`);
+  });
+
+  // FONCTION DE DIAGNOSTIC POUR VÉRIFIER LES DONNÉES
+  const checkDataIntegrity = () => {
+    console.log("🔬 DIAGNOSTIC DES DONNÉES:");
+    console.log("État livrables:", livrables.length, "éléments");
+    console.log("État projets:", projets.length, "éléments");
+    console.log("État stats:", stats.length, "éléments");
+    console.log("Refresh key:", refreshKey);
+    console.log("Loading:", loading);
+    console.log("Etudiant:", etudiant?.Immatricule);
+  };
+
+  // Exécuter le diagnostic à chaque render (temporaire pour debug)
+  if (livrables.length > 0) {
+    checkDataIntegrity();
+  }
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
@@ -364,7 +481,6 @@ const MesLivrables = () => {
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
-      {/* ... (Le reste du JSX de la Navbar et de la Sidebar ne change pas) ... */}
       <nav className="bg-blue-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -468,158 +584,168 @@ const MesLivrables = () => {
             </button>
           </nav>
         </aside>
-      
+
         <main className="flex-1 p-8">
-            {/* ... (Le reste du JSX du titre, filtres et stats ne change pas) ... */}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Mes livrables</h1>
-                <button
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold text-gray-800">Mes livrables</h1>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  console.log("🔄 RECHARGEMENT MANUEL DEMANDÉ");
+                  setRefreshKey(prev => prev + 1);
+                  fetchData();
+                }}
+                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-sm"
+                title="Recharger les données"
+              >
+                <i data-feather="refresh-cw" className="mr-2 h-4 w-4"></i> Recharger
+              </button>
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                >
+              >
                 <i data-feather="plus" className="mr-2 h-4 w-4"></i> Nouveau livrable
-                </button>
+              </button>
             </div>
+          </div>
 
-            <div className="bg-white p-4 rounded-lg shadow mb-6">
-                <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-gray-700">Filtrer :</span>
-                {filterButtons.map((filter) => (
-                    <button
-                    key={filter}
-                    onClick={() => {
-                        setActiveFilter(filter);
-                        setTimeout(() => feather.replace(), 0);
-                    }}
-                    className={`px-3 py-1 text-sm rounded-full border transition ${
-                        activeFilter === filter
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "hover:bg-gray-100 text-gray-700 border-gray-300"
-                    }`}
-                    >
-                    {filter}
-                    </button>
-                ))}
-                <div className="ml-auto flex items-center">
-                    <i data-feather="search" className="text-gray-400 mr-2"></i>
-                    <input
-                    type="text"
-                    placeholder="Rechercher..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                    />
-                </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {stats.map((stat, index) => (
-                <div
-                    key={index}
-                    className="bg-white rounded-lg shadow p-6"
-                    data-aos="fade-up"
-                    data-aos-delay={index * 100}
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Filtrer :</span>
+              {filterButtons.map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => {
+                    setActiveFilter(filter);
+                    setTimeout(() => feather.replace(), 0);
+                  }}
+                  className={`px-3 py-1 text-sm rounded-full border transition ${
+                    activeFilter === filter
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "hover:bg-gray-100 text-gray-700 border-gray-300"
+                  }`}
                 >
-                    <div className="flex items-center">
-                    <div className={`p-3 rounded-full ${stat.bg} ${stat.color}`}>
-                        <i data-feather={stat.icon}></i>
-                    </div>
-                    <div className="ml-4">
-                        <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                        <p className="text-2xl font-semibold text-gray-800">{stat.value}</p>
-                    </div>
-                    </div>
-                </div>
-                ))}
+                  {filter}
+                </button>
+              ))}
+              <div className="ml-auto flex items-center">
+                <i data-feather="search" className="text-gray-400 mr-2"></i>
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
+          </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">
-                    {activeFilter === "Tous"
-                    ? "Tous mes livrables"
-                    : `Livrables : ${activeFilter} (${filteredLivrables.length})`}
-                </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-lg shadow p-6"
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
+              >
+                <div className="flex items-center">
+                  <div className={`p-3 rounded-full ${stat.bg} ${stat.color}`}>
+                    <i data-feather={stat.icon}></i>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                    <p className="text-2xl font-semibold text-gray-800">{stat.value}</p>
+                  </div>
                 </div>
-                <div className="divide-y divide-gray-200">
-                {filteredLivrables.length > 0 ? (
-                    filteredLivrables.map((liv, index) => (
-                    <div
-                        key={liv.Id_livrable || index}
-                        className="px-6 py-4 transition hover:shadow-lg"
-                    >
-                        <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-gray-100">
-                            <i data-feather="file-text" className="h-5 w-5 text-gray-600"></i>
-                            </div>
-                            <div className="ml-4">
-                            <h3 className="text-sm font-medium text-gray-900">
-                                {liv.title}
-                            </h3>
-                            <p className="text-sm text-gray-500">{liv.project}</p>
-                            </div>
-                        </div>
+              </div>
+            ))}
+          </div>
 
-                        <div className="flex items-center space-x-4">
-                            <div className="flex space-x-1">
-                            {liv.categories.map((cat, i) => {
-                                const classes = getStatusClasses(cat);
-                                return (
-                                <span
-                                    key={i}
-                                    className={`px-2 py-1 text-xs font-medium rounded-full ${classes.statusColor}`}
-                                >
-                                    {classes.label}
-                                </span>
-                                );
-                            })}
-                            </div>
-
-                            <span className="text-sm text-gray-500">{liv.date}</span>
-
-                            <div className="flex space-x-2">
-                            <button
-                                className="p-1 text-yellow-600 hover:text-yellow-800"
-                                title="Modifier"
-                                onClick={() => handleEditLivrable(liv)}
-                            >
-                                <i data-feather="edit" className="h-4 w-4"></i>
-                            </button>
-                            <button
-                                className="p-1 text-red-600 hover:text-red-800"
-                                title="Supprimer"
-                                onClick={() => handleDeleteLivrable(liv.Id_livrable)}
-                            >
-                                <i data-feather="trash-2" className="h-4 w-4"></i>
-                            </button>
-                            {/* Afficher le bouton si le statut est Validé OU s'il y a un fichier */}
-                            {(liv.categories.includes("Validé") || liv.hasFichier) && (
-                                <button
-                                className="p-1 text-blue-600 hover:text-blue-800"
-                                title="Télécharger"
-                                onClick={() => handleDownloadFile(liv.Id_livrable, liv.title)}
-                                >
-                                <i data-feather="download" className="h-4 w-4"></i>
-                                </button>
-                            )}
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    ))
-                ) : (
-                    <p className="px-6 py-4 text-sm text-gray-500">
-                    Aucun livrable trouvé.
-                    </p>
-                )}
-                </div>
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900">
+                {activeFilter === "Tous"
+                  ? "Tous mes livrables"
+                  : `Livrables : ${activeFilter} (${filteredLivrables.length})`}
+              </h2>
             </div>
+            <div className="divide-y divide-gray-200">
+              {filteredLivrables.length > 0 ? (
+                filteredLivrables.map((liv, index) => (
+                  <div
+                    key={`${liv.Id_livrable}-${refreshKey}-${index}`}
+                    className="px-6 py-4 transition hover:shadow-lg"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-gray-100">
+                          <i data-feather="file-text" className="h-5 w-5 text-gray-600"></i>
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-sm font-medium text-gray-900">
+                            {liv.title}
+                          </h3>
+                          <p className="text-sm text-gray-500">{liv.project}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-4">
+                        <div className="flex space-x-1">
+                          {liv.categories.map((cat, i) => {
+                            const classes = getStatusClasses(cat);
+                            return (
+                              <span
+                                key={i}
+                                className={`px-2 py-1 text-xs font-medium rounded-full ${classes.statusColor}`}
+                              >
+                                {classes.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        <span className="text-sm text-gray-500">{liv.date}</span>
+
+                        <div className="flex space-x-2">
+                          <button
+                            className="p-1 text-yellow-600 hover:text-yellow-800"
+                            title="Modifier"
+                            onClick={() => handleEditLivrable(liv)}
+                          >
+                            <i data-feather="edit" className="h-4 w-4"></i>
+                          </button>
+                          <button
+                            className="p-1 text-red-600 hover:text-red-800"
+                            title="Supprimer"
+                            onClick={() => handleDeleteLivrable(liv.Id_livrable)}
+                          >
+                            <i data-feather="trash-2" className="h-4 w-4"></i>
+                          </button>
+                          {(liv.categories.includes("Validé") || liv.hasFichier) && (
+                            <button
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="Télécharger"
+                              onClick={() => handleDownloadFile(liv.Id_livrable, liv.title)}
+                            >
+                              <i data-feather="download" className="h-4 w-4"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="px-6 py-4 text-sm text-gray-500">
+                  Aucun livrable trouvé.
+                </p>
+              )}
+            </div>
+          </div>
         </main>
       </div>
 
-      {/* Modal pour l'ajout */}
       {isModalOpen && (
         <ModalAjoutLivrable
           isOpen={isModalOpen}
@@ -630,7 +756,6 @@ const MesLivrables = () => {
         />
       )}
 
-      {/* ✨ 5. Ajouter le nouveau modal pour la modification */}
       {isEditModalOpen && (
         <ModalModifierLivrable
           isOpen={isEditModalOpen}
