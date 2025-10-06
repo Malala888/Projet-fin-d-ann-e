@@ -547,7 +547,7 @@ const MesLivrables = () => {
               <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
             </Link>
             <Link
-              to="/mes_projets"
+              to="/mes_projet"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
               <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes projets

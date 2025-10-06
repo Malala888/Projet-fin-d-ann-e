@@ -146,22 +146,46 @@ app.get("/etudiants/:id/projets", async (req, res) => {
   }
 });
 
+// GET projet spécifique avec détails complets
 app.get("/projets/:id", async (req, res) => {
+   try {
+     const [rows] = await pool.query(
+       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+               E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
+               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
+        FROM projet P
+        JOIN encadreur E ON P.Id_encadreur = E.Matricule
+        JOIN etudiant ET ON P.Id_etudiant = ET.Immatricule
+        WHERE P.Id_projet = ?`,
+       [req.params.id]
+     );
+     if (rows.length === 0) return res.status(404).json({ error: "Projet introuvable" });
+     res.json(rows[0]);
+   } catch (err) {
+     res.status(500).json({ error: "Erreur récupération projet" });
+   }
+});
+
+// GET livrables d'un projet spécifique
+app.get("/projets/:id/livrables", async (req, res) => {
   try {
+    console.log(`📋 Récupération des livrables pour le projet ${req.params.id}`);
+
     const [rows] = await pool.query(
-      `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
-              E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
+      `SELECT L.Id_livrable, L.Id_etudiant, L.Id_encadreur, L.Nom, L.Titre, L.Date_soumission, L.Status, L.Chemin_fichier, L.Type, L.Taille_fichier,
               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
-       FROM projet P
-       JOIN encadreur E ON P.Id_encadreur = E.Matricule
-       JOIN etudiant ET ON P.Id_etudiant = ET.Immatricule
-       WHERE P.Id_projet = ?`,
+       FROM livrable L
+       JOIN etudiant ET ON L.Id_etudiant = ET.Immatricule
+       WHERE L.Id_projet = ?
+       ORDER BY L.Date_soumission DESC`,
       [req.params.id]
     );
-    if (rows.length === 0) return res.status(404).json({ error: "Projet introuvable" });
-    res.json(rows[0]);
+
+    console.log(`✅ ${rows.length} livrables trouvés pour le projet ${req.params.id}`);
+    res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: "Erreur récupération projet" });
+    console.error("❌ Erreur récupération livrables projet:", err);
+    res.status(500).json({ error: "Erreur récupération livrables projet", details: err.message });
   }
 });
 
