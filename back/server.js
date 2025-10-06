@@ -131,19 +131,24 @@ app.get("/encadreurs/:id", async (req, res) => {
 
 // ------------------- ROUTES PROJETS -------------------
 app.get("/etudiants/:id/projets", async (req, res) => {
-  try {
-    const [rows] = await pool.query(
-      `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
-              E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
-       FROM projet P
-       JOIN encadreur E ON P.Id_encadreur = E.Matricule
-       WHERE P.Id_etudiant = ?`,
-      [req.params.id]
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: "Erreur récupération projets" });
-  }
+   try {
+     const [rows] = await pool.query(
+       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+               E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
+        FROM projet P
+        JOIN encadreur E ON P.Id_encadreur = E.Matricule
+        WHERE P.Id_etudiant = ?`,
+       [req.params.id]
+     );
+
+     console.log(`📋 Projets récupérés pour l'étudiant ${req.params.id}:`, rows.length);
+     console.log("🔍 Détails du premier projet:", rows[0]);
+
+     res.json(rows);
+   } catch (err) {
+     console.error("❌ Erreur récupération projets:", err);
+     res.status(500).json({ error: "Erreur récupération projets" });
+   }
 });
 
 // GET projet spécifique avec détails complets
@@ -566,6 +571,7 @@ app.put("/admin/:id/password", async (req, res) => {
     res.status(500).json({ error: "Erreur update mot de passe" });
   }
 });
+
 
 // ------------------- ROUTE DE SANTÉ -------------------
 app.get("/health", (req, res) => {

@@ -11,6 +11,28 @@ const MesProjets = () => {
     const [projets, setProjets] = useState([]);
     const navigate = useNavigate();
 
+    // Fonction pour ouvrir l'email dans une petite fenêtre centrée
+    const openEmailWindow = (projet) => {
+        const sujet = encodeURIComponent(`Question concernant le projet: ${projet.Theme}`);
+        const corps = encodeURIComponent(`Bonjour ${projet.Nom_encadreur},\n\nJe vous contacte au sujet du projet "${projet.Theme}".\n\nCordialement,\n${etudiant?.Nom}`);
+        const mailtoLink = `mailto:${projet.Email_encadreur}?subject=${sujet}&body=${corps}`;
+
+        // Calculer la position pour centrer la fenêtre
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
+        const windowWidth = 600;
+        const windowHeight = 400;
+        const left = (screenWidth - windowWidth) / 2;
+        const top = (screenHeight - windowHeight) / 2;
+
+        // Ouvrir dans une petite fenêtre centrée
+        window.open(
+            mailtoLink,
+            'emailWindow',
+            `width=${windowWidth},height=${windowHeight},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+    };
+
     useEffect(() => {
         AOS.init({ duration: 800, once: true });
 
@@ -29,6 +51,8 @@ const MesProjets = () => {
             axios
                 .get(`http://localhost:5000/etudiants/${userData.Immatricule}/projets`)
                 .then((response) => {
+                    console.log("📋 Projets reçus:", response.data);
+                    console.log("🔍 Détails du premier projet:", response.data[0]);
                     setProjets(response.data);
                     setTimeout(() => {
                         feather.replace();
@@ -124,7 +148,7 @@ const MesProjets = () => {
                             bord
                         </Link>
                         <Link
-                            to="/mes_projets"
+                            to="/mes_projet"
                             className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700"
                         >
                             <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes
@@ -208,11 +232,18 @@ const MesProjets = () => {
                                                         }`}
                                                         alt=""
                                                     />
-                                                    <span>{`${projet.Nom_enseignant} ${projet.Prenom_enseignant}`}</span>
+                                                    <span>{`${projet.Nom_encadreur || 'Non défini'} ${projet.Titre_encadreur || ''}`}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500">
-                                                {projet.Date_fin}
+                                                {projet.Date_fin ? (() => {
+                                                    try {
+                                                        const dateObj = new Date(projet.Date_fin);
+                                                        return dateObj.toLocaleDateString('fr-FR');
+                                                    } catch (error) {
+                                                        return projet.Date_fin;
+                                                    }
+                                                })() : 'Non définie'}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="w-full bg-gray-200 rounded-full h-2.5">
@@ -229,15 +260,17 @@ const MesProjets = () => {
                                                 <Link
                                                     to={`/projet_detail/${projet.Id_projet}`}
                                                     className="text-blue-600 hover:text-blue-900 mr-3"
+                                                    title="Voir les détails"
                                                 >
                                                     <i data-feather="eye"></i>
                                                 </Link>
-                                                <Link
-                                                    to={`/messagerie/${projet.Id_encadreur}`}
+                                                <button
+                                                    onClick={() => openEmailWindow(projet)}
                                                     className="text-green-600 hover:text-green-900"
+                                                    title="Envoyer un message"
                                                 >
                                                     <i data-feather="message-square"></i>
-                                                </Link>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))
@@ -253,6 +286,7 @@ const MesProjets = () => {
                     </div>
                 </main>
             </div>
+
         </div>
     );
 };
