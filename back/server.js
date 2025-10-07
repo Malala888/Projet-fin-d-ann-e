@@ -48,6 +48,22 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
+// Gestion des erreurs de connexion MySQL
+pool.on('connection', (connection) => {
+  console.log('✅ Nouvelle connexion MySQL établie');
+});
+
+pool.on('error', (err) => {
+  console.error('❌ Erreur MySQL:', err);
+  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.error('❌ Connexion MySQL perdue');
+  } else if (err.code === 'ECONNREFUSED') {
+    console.error('❌ Connexion MySQL refusée');
+  } else {
+    console.error('❌ Erreur MySQL inconnue:', err);
+  }
+});
+
 // ------------------- MULTER CONFIG -------------------
 const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -109,6 +125,15 @@ app.get("/encadreurs", async (req, res) => {
   }
 });
 
+app.get("/equipes", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM equipe");
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Erreur récupération équipes" });
+  }
+});
+
 app.get("/etudiants/:id", async (req, res) => {
   try {
     const [rows] = await pool.query("SELECT * FROM etudiant WHERE Immatricule = ?", [req.params.id]);
@@ -133,7 +158,7 @@ app.get("/encadreurs/:id", async (req, res) => {
 app.get("/etudiants/:id/projets", async (req, res) => {
    try {
      const [rows] = await pool.query(
-       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur,
                E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
         FROM projet P
         JOIN encadreur E ON P.Id_encadreur = E.Matricule
@@ -155,7 +180,7 @@ app.get("/etudiants/:id/projets", async (req, res) => {
 app.get("/projets/:id", async (req, res) => {
    try {
      const [rows] = await pool.query(
-       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur,
                E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
                ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
         FROM projet P
@@ -194,6 +219,150 @@ app.get("/projets/:id/livrables", async (req, res) => {
   }
 });
 
+// POST créer une nouvelle équipe
+app.post("/equipes", async (req, res) => {
+  try {
+    const { nom_equipe, membres } = req.body;
+
+    console.log("📝 Création d'une nouvelle équipe:", {
+      nom_equipe,
+      membres: membres || []
+    });
+
+    if (!nom_equipe) {
+      return res.status(400).json({ error: "Le nom de l'équipe est requis" });
+    }
+
+    const [result] = await pool.query(
+      `INSERT INTO equipe (Nom_equipe) VALUES (?)`,
+      [nom_equipe]
+    );
+    const equipeId = result.insertId;
+    console.log(`✅ Équipe créée avec ID: ${equipeId}`);
+
+    if (membres && Array.isArray(membres) && membres.length > 0) {
+      console.log(`👥 Ajout de ${membres.length} membres à l'équipe ${equipeId}`);
+      for (const membreId of membres) {
+        try {
+          const [membreCheck] = await pool.query("SELECT Immatricule FROM etudiant WHERE Immatricule = ?", [membreId]);
+          if (membreCheck.length > 0) {
+            await pool.query(`UPDATE etudiant SET Id_equipe = ? WHERE Immatricule = ?`, [equipeId, membreId]);
+            console.log(`✅ Étudiant ${membreId} ajouté à l'équipe ${equipeId}`);
+          } else {
+            console.warn(`⚠️ Étudiant ${membreId} non trouvé, ignoré`);
+          }
+        } catch (membreError) {
+          console.error(`❌ Erreur ajout étudiant ${membreId}:`, membreError);
+        }
+      }
+    }
+
+    res.status(201).json({
+      message: "Équipe créée avec succès",
+      id_equipe: equipeId,
+      nom_equipe: nom_equipe,
+      membres_ajoutes: membres ? membres.length : 0
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur création équipe:", err);
+    res.status(500).json({ error: "Erreur lors de la création de l'équipe", details: err.message });
+  }
+});
+
+// POST créer un nouveau projet - VERSION CORRIGÉE
+app.post("/projets", async (req, res) => {
+  const { theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe } = req.body;
+
+  console.log("=== DEBUG REQUÊTE PROJET ===");
+  console.log("Corps de la requête reçu:", JSON.stringify(req.body, null, 2));
+
+  // Validation des champs
+  if (!theme || !description || !date_debut || !date_fin || !id_encadreur || !id_etudiant) {
+      return res.status(400).json({ error: "Tous les champs requis ne sont pas fournis." });
+  }
+
+  const connection = await pool.getConnection(); // Récupérer une connexion du pool
+
+  try {
+      await connection.beginTransaction(); // Démarrer la transaction
+
+      // Vérifier que l'encadreur existe
+      const [encadreurCheck] = await connection.query("SELECT Matricule FROM encadreur WHERE Matricule = ?", [id_encadreur]);
+      if (encadreurCheck.length === 0) {
+          throw new Error("Encadreur non trouvé");
+      }
+
+      // Vérifier que l'étudiant existe
+      const [etudiantCheck] = await connection.query("SELECT Immatricule FROM etudiant WHERE Immatricule = ?", [id_etudiant]);
+      if (etudiantCheck.length === 0) {
+          throw new Error("Étudiant non trouvé");
+      }
+
+      // Si une équipe est spécifiée, vérifier qu'elle existe
+      if (id_equipe) {
+          const [equipeCheck] = await connection.query("SELECT Id_equipe FROM equipe WHERE Id_equipe = ?", [id_equipe]);
+          if (equipeCheck.length === 0) {
+              throw new Error("Équipe non trouvée");
+          }
+      }
+
+      // Créer le projet principal
+      const [result] = await connection.query(
+          `INSERT INTO projet (Theme, Description, Date_deb, Date_fin, Id_encadreur, Id_etudiant, Id_equipe, Avancement)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe || null, 0]
+      );
+      const projetId = result.insertId;
+      console.log(`✅ Projet créé avec ID: ${projetId}`);
+
+      // Si une équipe est spécifiée, ajouter les autres membres au projet
+      if (id_equipe) {
+          const [membresEquipe] = await connection.query("SELECT Immatricule FROM etudiant WHERE Id_equipe = ?", [id_equipe]);
+          console.log(`👥 Ajout de ${membresEquipe.length} membres de l'équipe au projet ${projetId}`);
+
+          for (const membre of membresEquipe) {
+              if (membre.Immatricule !== id_etudiant) { // Ne pas créer de doublon pour le créateur
+                  await connection.query(
+                      `INSERT INTO projet (Theme, Description, Date_deb, Date_fin, Id_encadreur, Id_etudiant, Id_equipe, Avancement)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                      [theme, description, date_debut, date_fin, id_encadreur, membre.Immatricule, id_equipe, 0]
+                  );
+                  console.log(`✅ Membre ${membre.Immatricule} ajouté au projet ${projetId}`);
+              }
+          }
+      }
+
+      // Récupérer les détails du projet créé pour la réponse
+      const [projetRows] = await connection.query(
+          `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+                  E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
+           FROM projet P
+           JOIN encadreur E ON P.Id_encadreur = E.Matricule
+           WHERE P.Id_projet = ?`,
+          [projetId]
+      );
+
+      await connection.commit(); // Valider toutes les opérations si tout s'est bien passé
+
+      res.status(201).json({
+          message: "Projet créé avec succès",
+          projet: projetRows[0],
+          id_equipe: id_equipe
+      });
+
+  } catch (err) {
+      await connection.rollback(); // Annuler toutes les opérations en cas d'erreur
+      console.error("❌ Erreur création projet (transaction annulée) :", err);
+      res.status(500).json({
+          error: "Erreur lors de la création du projet",
+          details: err.message
+      });
+  } finally {
+      connection.release(); // TRÈS IMPORTANT: Libérer la connexion pour la remettre dans le pool
+  }
+});
+
 // ------------------- ROUTES LIVRABLES -------------------
 
 // GET livrables étudiant
@@ -220,7 +389,6 @@ app.post("/livrables", upload.single("fichier"), async (req, res) => {
   try {
     const { Nom, Titre, Id_projet, Id_etudiant, Date_soumission, Status } = req.body;
 
-    // Get Id_encadreur from the projet
     const [projetRows] = await pool.query("SELECT Id_encadreur FROM projet WHERE Id_projet = ?", [Id_projet]);
     if (projetRows.length === 0) {
       return res.status(404).json({ error: "Projet non trouvé" });
@@ -246,118 +414,32 @@ app.post("/livrables", upload.single("fichier"), async (req, res) => {
   }
 });
 
-// UPDATE livrable - VERSION CORRIGÉE
+// UPDATE livrable
 app.put("/livrables/:id", upload.single("fichier"), async (req, res) => {
   try {
     const { Nom, Titre, Id_projet, Id_etudiant, Date_soumission, Status } = req.body;
-
-    console.log("📝 Données reçues pour modification:", {
-      Id_livrable: req.params.id,
-      Nom,
-      Titre,
-      Date_soumission,
-      Id_projet,
-      Status,
-      fichier: req.file ? req.file.filename : "aucun"
-    });
-
-    // Logging détaillé pour la date
-    console.log("📅 DÉTAILS DATE REÇUE DU FRONTEND:");
-    console.log(`  Date_soumission reçue: ${Date_soumission}`);
-    console.log(`  Type: ${typeof Date_soumission}`);
-
-    try {
-      const dateObj = new Date(Date_soumission);
-      console.log(`  Date parsée: ${dateObj.toISOString()}`);
-      console.log(`  Date locale: ${dateObj.toLocaleDateString('fr-FR')}`);
-      console.log(`  Timestamp: ${dateObj.getTime()}`);
-    } catch (dateError) {
-      console.error(`  ❌ Erreur parsing date reçue:`, dateError);
-    }
-
-    // Récupérer les données actuelles du livrable
     const [currentRows] = await pool.query(
       "SELECT Status, Chemin_fichier, Id_encadreur, Type, Taille_fichier FROM livrable WHERE Id_livrable=?",
       [req.params.id]
     );
-    
-    if (currentRows.length === 0) {
-      return res.status(404).json({ error: "Livrable non trouvé" });
-    }
-
+    if (currentRows.length === 0) return res.status(404).json({ error: "Livrable non trouvé" });
     const currentLivrable = currentRows[0];
-
-    // Gestion du fichier
-    let chemin_fichier = currentLivrable.Chemin_fichier;
-    let type = currentLivrable.Type;
-    let taille = currentLivrable.Taille_fichier;
-
+    let chemin_fichier = currentLivrable.Chemin_fichier, type = currentLivrable.Type, taille = currentLivrable.Taille_fichier;
     if (req.file) {
       chemin_fichier = `/uploads/${req.file.filename}`;
       type = req.file.mimetype;
       taille = (req.file.size / 1024 / 1024).toFixed(2) + "MB";
-      
-      console.log("📁 Nouveau fichier uploadé:", chemin_fichier);
     }
-
-    // Gestion du statut
-    let finalStatus = Status || currentLivrable.Status || "Soumis";
-
-    // Requête de mise à jour
+    const finalStatus = Status || currentLivrable.Status || "Soumis";
     const [result] = await pool.query(
-      `UPDATE livrable
-       SET Id_projet=?,
-           Id_etudiant=?,
-           Id_encadreur=?,
-           Nom=?,
-           Titre=?,
-           Type=?,
-           Taille_fichier=?,
-           Date_soumission=?,
-           Status=?,
-           Chemin_fichier=?
-       WHERE Id_livrable=?`,
-      [
-        Id_projet,
-        Id_etudiant,
-        currentLivrable.Id_encadreur,
-        Nom,
-        Titre,
-        type,
-        taille,
-        Date_soumission,
-        finalStatus,
-        chemin_fichier,
-        req.params.id
-      ]
+      `UPDATE livrable SET Id_projet=?, Id_etudiant=?, Id_encadreur=?, Nom=?, Titre=?, Type=?, Taille_fichier=?, Date_soumission=?, Status=?, Chemin_fichier=? WHERE Id_livrable=?`,
+      [Id_projet, Id_etudiant, currentLivrable.Id_encadreur, Nom, Titre, type, taille, Date_soumission, finalStatus, chemin_fichier, req.params.id]
     );
-
-    console.log(`✅ Livrable ${req.params.id} modifié avec succès:`, {
-      Date_soumission,
-      Status: finalStatus,
-      affectedRows: result.affectedRows
-    });
-
-    // Vérifier que la modification a bien eu lieu
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ error: "Aucune modification effectuée" });
-    }
-
-    res.json({
-      message: "Livrable modifié avec succès",
-      affected: result.affectedRows,
-      data: {
-        Date_soumission,
-        Status: finalStatus
-      }
-    });
-
+    if (result.affectedRows === 0) return res.status(400).json({ error: "Aucune modification effectuée" });
+    res.json({ message: "Livrable modifié avec succès", affected: result.affectedRows });
   } catch (err) {
     console.error("❌ Erreur modification livrable:", err);
-    res.status(500).json({
-      error: "Erreur modification livrable",
-      details: err.message
-    });
+    res.status(500).json({ error: "Erreur modification livrable", details: err.message });
   }
 });
 
@@ -377,131 +459,25 @@ app.delete("/livrables/:id", async (req, res) => {
   }
 });
 
-// DOWNLOAD livrable - VERSION OPTIMISÉE
+// DOWNLOAD livrable
 app.get("/livrables/:id/download", async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      "SELECT Chemin_fichier, Nom, Titre FROM livrable WHERE Id_livrable=?",
-      [req.params.id]
-    );
-
-    if (rows.length === 0 || !rows[0].Chemin_fichier) {
-      console.error(`❌ Livrable ${req.params.id} non trouvé ou sans fichier`);
-      return res.status(404).json({ error: "Fichier non trouvé" });
-    }
-
-    // Construire le chemin complet du fichier
+    const [rows] = await pool.query("SELECT Chemin_fichier, Nom, Titre FROM livrable WHERE Id_livrable=?", [req.params.id]);
+    if (rows.length === 0 || !rows[0].Chemin_fichier) return res.status(404).json({ error: "Fichier non trouvé" });
     const relativePath = rows[0].Chemin_fichier.replace('/uploads/', '');
     const filePath = path.join(__dirname, 'uploads', relativePath);
-
-    // Vérifier si le fichier existe
-    if (!fs.existsSync(filePath)) {
-      console.error(`❌ Fichier physique non trouvé: ${filePath}`);
-      return res.status(404).json({ error: "Fichier non trouvé sur le serveur" });
-    }
-
-    console.log(`✅ Fichier trouvé: ${filePath}`);
-
-    // Obtenir l'extension et le nom original
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "Fichier non trouvé sur le serveur" });
     const fileExt = path.extname(filePath).toLowerCase();
-    const fileName = path.basename(filePath);
-
-    // Utiliser le titre ou le nom comme nom de téléchargement
-    let downloadName = rows[0].Titre || rows[0].Nom || fileName;
-
-    // S'assurer que le nom a une extension
-    if (!path.extname(downloadName)) {
-      downloadName += fileExt;
-    }
-
-    // Types MIME pour tous les formats courants
-    const mimeTypes = {
-      // Documents
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.odt': 'application/vnd.oasis.opendocument.text',
-      '.rtf': 'application/rtf',
-
-      // Présentations
-      '.ppt': 'application/vnd.ms-powerpoint',
-      '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      '.odp': 'application/vnd.oasis.opendocument.presentation',
-
-      // Feuilles de calcul
-      '.xls': 'application/vnd.ms-excel',
-      '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      '.ods': 'application/vnd.oasis.opendocument.spreadsheet',
-      '.csv': 'text/csv',
-
-      // Texte
-      '.txt': 'text/plain',
-
-      // Images
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.bmp': 'image/bmp',
-      '.svg': 'image/svg+xml',
-      '.webp': 'image/webp',
-
-      // Archives
-      '.zip': 'application/zip',
-      '.rar': 'application/x-rar-compressed',
-      '.7z': 'application/x-7z-compressed',
-      '.tar': 'application/x-tar',
-      '.gz': 'application/gzip',
-
-      // Autres
-      '.json': 'application/json',
-      '.xml': 'application/xml',
-      '.html': 'text/html',
-      '.css': 'text/css',
-      '.js': 'application/javascript'
-    };
-
+    let downloadName = rows[0].Titre || rows[0].Nom || path.basename(filePath);
+    if (!path.extname(downloadName)) downloadName += fileExt;
+    const mimeTypes = { '.pdf': 'application/pdf', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.zip': 'application/zip' };
     const contentType = mimeTypes[fileExt] || 'application/octet-stream';
-
-    // Encoder correctement le nom du fichier pour éviter les problèmes avec les caractères spéciaux
-    const encodedFileName = encodeURIComponent(downloadName);
-
-    // Définir les headers appropriés
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${downloadName}"; filename*=UTF-8''${encodedFileName}`);
-    res.setHeader('Content-Transfer-Encoding', 'binary');
-    res.setHeader('Content-Length', fs.statSync(filePath).size);
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-
-    // CORS headers pour permettre le téléchargement depuis le frontend
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-
-    console.log(`📥 Téléchargement: ${downloadName} (${contentType}) - Taille: ${fs.statSync(filePath).size} bytes`);
-
-    // Créer un stream de lecture et l'envoyer au client
-    const fileStream = fs.createReadStream(filePath);
-
-    fileStream.on('error', (error) => {
-      console.error('❌ Erreur lors de la lecture du fichier:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Erreur lors de la lecture du fichier" });
-      }
-    });
-
-    fileStream.on('end', () => {
-      console.log(`✅ Téléchargement terminé: ${downloadName}`);
-    });
-
-    // Envoyer le fichier
-    fileStream.pipe(res);
-
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadName)}"`);
+    fs.createReadStream(filePath).pipe(res);
   } catch (err) {
     console.error("❌ Erreur téléchargement:", err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Erreur lors du téléchargement", details: err.message });
-    }
+    res.status(500).json({ error: "Erreur lors du téléchargement", details: err.message });
   }
 });
 
@@ -509,7 +485,7 @@ app.get("/livrables/:id/download", async (req, res) => {
 app.get("/etudiants/:id/calendrier", async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT P.Date_fin AS date, P.Theme AS title, 'Projet' AS type FROM projet P WHERE P.Id_etudiant=?
+      `SELECT P.Date_deb AS date, P.Theme AS title, 'Projet' AS type FROM projet P WHERE P.Id_etudiant=?
        UNION
        SELECT L.Date_soumission AS date, L.Nom AS title, 'Livrable' AS type FROM livrable L WHERE L.Id_etudiant=?`,
       [req.params.id, req.params.id]
@@ -572,14 +548,28 @@ app.put("/admin/:id/password", async (req, res) => {
   }
 });
 
-
 // ------------------- ROUTE DE SANTÉ -------------------
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString(), database: "Connected" });
 });
 
+// Gestion des erreurs non capturées
+process.on('uncaughtException', (err) => {
+  console.error('❌ Erreur non capturée:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesse rejetée non gérée:', reason);
+});
+
 // ------------------- DEMARRAGE -------------------
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Serveur Express démarré sur http://localhost:${PORT}`);
-  console.log(`📊 Route de santé disponible: http://localhost:${PORT}/health`);
+});
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Le port ${PORT} est déjà utilisé`);
+  } else {
+    console.error('❌ Erreur du serveur:', err);
+  }
+  process.exit(1);
 });

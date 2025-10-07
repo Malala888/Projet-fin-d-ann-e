@@ -213,7 +213,7 @@ const ProjectDetails = () => {
               <div className="flex items-center">
                 <img
                   src={`http://static.photos/people/200x200/${
-                    (projet.Id_encadreur % 10) + 1
+                    (projet.Id_encadreur % 10) + 1 || 1
                   }`}
                   className="h-10 w-10 rounded-full mr-3"
                   alt=""
