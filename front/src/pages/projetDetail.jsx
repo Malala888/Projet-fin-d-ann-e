@@ -10,6 +10,7 @@ const ProjectDetails = () => {
   const [etudiant, setEtudiant] = useState(null);
   const [projet, setProjet] = useState(null);
   const [livrables, setLivrables] = useState([]);
+  const [membresEquipe, setMembresEquipe] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,6 +40,26 @@ const ProjectDetails = () => {
             `http://localhost:5000/projets/${id}/livrables`
           );
           setLivrables(livrablesResponse.data);
+
+          // Récupérer les membres de l'équipe si le projet en a une
+          console.log(`🔍 Vérification équipe - Projet ID: ${id}, Id_equipe: ${projetResponse.data.Id_equipe}`);
+
+          if (projetResponse.data.Id_equipe) {
+            try {
+              console.log(`👥 Récupération des membres pour l'équipe ${projetResponse.data.Id_equipe}`);
+              const membresResponse = await axios.get(
+                `http://localhost:5000/projets/${id}/equipe`
+              );
+              console.log(`✅ Membres reçus:`, membresResponse.data);
+              setMembresEquipe(membresResponse.data);
+            } catch (membresErr) {
+              console.error("❌ Erreur lors de la récupération des membres de l'équipe :", membresErr.response?.data || membresErr.message);
+              setMembresEquipe([]);
+            }
+          } else {
+            console.log(`📋 Pas d'équipe pour ce projet`);
+            setMembresEquipe([]);
+          }
 
           setLoading(false);
           setTimeout(() => {
@@ -85,9 +106,9 @@ const ProjectDetails = () => {
     );
   }
 
-  const membres = projet.Nom_membres
-    ? projet.Nom_membres.split(",")
-    : [projet.Nom_etudiant];
+  // Utiliser les membres de l'équipe récupérés depuis le backend
+  // Si pas de membres d'équipe, afficher seulement l'étudiant actuel
+  const membres = membresEquipe.length > 0 ? membresEquipe : [];
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
@@ -248,26 +269,40 @@ const ProjectDetails = () => {
           </div>
 
           {/* Team */}
-          <section className="bg-white p-6 rounded-lg shadow mb-8">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Équipe</h2>
-            <div className="flex -space-x-4">
-              {membres.map((membre, index) => (
-                <img
-                  key={index}
-                  className="h-10 w-10 rounded-full border-2 border-white"
-                  src={`http://static.photos/people/200x200/${index + 2}`}
-                  alt={membre}
-                />
-              ))}
-            </div>
-            <div className="mt-4">
-              {membres.map((membre, index) => (
-                <p key={index} className="text-gray-700 text-sm">
-                  {membre}
-                </p>
-              ))}
-            </div>
-          </section>
+           <section className="bg-white p-6 rounded-lg shadow mb-8">
+             <h2 className="text-lg font-medium text-gray-900 mb-4">
+               Équipe {membres.length > 0 ? `(${membres.length} membre${membres.length > 1 ? 's' : ''})` : '(Projet individuel)'}
+             </h2>
+             {membres.length > 0 ? (
+               <div className="space-y-4">
+                 {membres.map((membre, index) => (
+                   <div key={membre.Immatricule || index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                     <img
+                       className="h-10 w-10 rounded-full mr-3 border-2 border-white"
+                       src={`http://static.photos/people/200x200/${(membre.Immatricule % 10) + 1 || index + 2}`}
+                       alt={membre.Nom}
+                     />
+                     <div className="flex-1">
+                       <p className="text-gray-900 font-medium">{membre.Nom}</p>
+                       <p className="text-gray-500 text-sm">{membre.Email}</p>
+                       <p className="text-gray-500 text-xs">Immatricule: {membre.Immatricule}</p>
+                     </div>
+                     {membre.Niveau && (
+                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                         {membre.Niveau}
+                       </span>
+                     )}
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <div className="text-center py-8">
+                 <i data-feather="user" className="h-12 w-12 text-gray-300 mx-auto mb-3"></i>
+                 <p className="text-gray-500">Ce projet est individuel</p>
+                 <p className="text-gray-400 text-sm mt-1">Aucun membre d'équipe à afficher</p>
+               </div>
+             )}
+           </section>
 
           {/* Livrables */}
           <section className="bg-white p-6 rounded-lg shadow mb-8">

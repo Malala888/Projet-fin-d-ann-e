@@ -180,7 +180,7 @@ app.get("/etudiants/:id/projets", async (req, res) => {
 app.get("/projets/:id", async (req, res) => {
    try {
      const [rows] = await pool.query(
-       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur,
+       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe,
                E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
                ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
         FROM projet P
@@ -198,24 +198,67 @@ app.get("/projets/:id", async (req, res) => {
 
 // GET livrables d'un projet spécifique
 app.get("/projets/:id/livrables", async (req, res) => {
-  try {
-    console.log(`📋 Récupération des livrables pour le projet ${req.params.id}`);
+   try {
+     console.log(`📋 Récupération des livrables pour le projet ${req.params.id}`);
 
-    const [rows] = await pool.query(
-      `SELECT L.Id_livrable, L.Id_etudiant, L.Id_encadreur, L.Nom, L.Titre, L.Date_soumission, L.Status, L.Chemin_fichier, L.Type, L.Taille_fichier,
-              ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
-       FROM livrable L
-       JOIN etudiant ET ON L.Id_etudiant = ET.Immatricule
-       WHERE L.Id_projet = ?
-       ORDER BY L.Date_soumission DESC`,
+     const [rows] = await pool.query(
+       `SELECT L.Id_livrable, L.Id_etudiant, L.Id_encadreur, L.Nom, L.Titre, L.Date_soumission, L.Status, L.Chemin_fichier, L.Type, L.Taille_fichier,
+               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
+        FROM livrable L
+        JOIN etudiant ET ON L.Id_etudiant = ET.Immatricule
+        WHERE L.Id_projet = ?
+        ORDER BY L.Date_soumission DESC`,
+       [req.params.id]
+     );
+
+     console.log(`✅ ${rows.length} livrables trouvés pour le projet ${req.params.id}`);
+     res.json(rows);
+   } catch (err) {
+     console.error("❌ Erreur récupération livrables projet:", err);
+     res.status(500).json({ error: "Erreur récupération livrables projet", details: err.message });
+   }
+});
+
+// GET membres de l'équipe d'un projet spécifique
+app.get("/projets/:id/equipe", async (req, res) => {
+  try {
+    console.log(`👥 Récupération des membres de l'équipe pour le projet ${req.params.id}`);
+
+    // D'abord vérifier si le projet a une équipe
+    const [projetRows] = await pool.query(
+      "SELECT Id_equipe, Theme, Id_etudiant FROM projet WHERE Id_projet = ?",
       [req.params.id]
     );
 
-    console.log(`✅ ${rows.length} livrables trouvés pour le projet ${req.params.id}`);
-    res.json(rows);
+    if (projetRows.length === 0) {
+      console.log(`❌ Projet ${req.params.id} non trouvé`);
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    const projet = projetRows[0];
+    console.log(`📋 Projet trouvé: ${projet.Theme}, Id_equipe: ${projet.Id_equipe}, Id_etudiant: ${projet.Id_etudiant}`);
+
+    if (!projet.Id_equipe) {
+      console.log(`📋 Projet ${req.params.id} n'a pas d'équipe`);
+      return res.json([]);
+    }
+
+    // Récupérer tous les membres de l'équipe
+    const [membres] = await pool.query(
+      `SELECT E.Immatricule, E.Nom, E.Email, E.Niveau, E.Id_equipe
+       FROM etudiant E
+       WHERE E.Id_equipe = ?
+       ORDER BY E.Nom`,
+      [projet.Id_equipe]
+    );
+
+    console.log(`✅ ${membres.length} membres trouvés pour l'équipe ${projet.Id_equipe} du projet ${req.params.id}`);
+    console.log(`📋 Membres:`, membres.map(m => `${m.Nom} (${m.Immatricule})`));
+
+    res.json(membres);
   } catch (err) {
-    console.error("❌ Erreur récupération livrables projet:", err);
-    res.status(500).json({ error: "Erreur récupération livrables projet", details: err.message });
+    console.error("❌ Erreur récupération membres équipe:", err);
+    res.status(500).json({ error: "Erreur récupération membres équipe", details: err.message });
   }
 });
 
@@ -314,7 +357,7 @@ app.post("/projets", async (req, res) => {
           [theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe || null, 0]
       );
       const projetId = result.insertId;
-      console.log(`✅ Projet créé avec ID: ${projetId}`);
+      console.log(`✅ Projet créé avec ID: ${projetId}, Id_equipe sauvegardé: ${id_equipe || null}`);
 
       // Si une équipe est spécifiée, ajouter les autres membres au projet
       if (id_equipe) {
@@ -335,7 +378,7 @@ app.post("/projets", async (req, res) => {
 
       // Récupérer les détails du projet créé pour la réponse
       const [projetRows] = await connection.query(
-          `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_fin,
+          `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_equipe,
                   E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
            FROM projet P
            JOIN encadreur E ON P.Id_encadreur = E.Matricule
