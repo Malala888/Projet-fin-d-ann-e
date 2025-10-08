@@ -16,6 +16,7 @@ const ProjectDetails = () => {
 
   useEffect(() => {
     feather.replace();
+    let isMounted = true; // Pour éviter les mises à jour d'état si le composant est démonté
 
     const storedUser = localStorage.getItem("user");
     const storedRole = localStorage.getItem("role");
@@ -25,59 +26,65 @@ const ProjectDetails = () => {
       return;
     }
 
-    try {
-      const userData = JSON.parse(storedUser);
-      setEtudiant(userData);
+    const fetchData = async () => {
+      try {
+        const userData = JSON.parse(storedUser);
+        if (isMounted) setEtudiant(userData);
 
-      const fetchData = async () => {
-        try {
-          const projetResponse = await axios.get(
-            `http://localhost:5000/projets/${id}`
-          );
-          setProjet(projetResponse.data);
+        // 1. Récupérer les détails principaux du projet
+        const projetResponse = await axios.get(`http://localhost:5000/projets/${id}`);
+        const projetData = projetResponse.data;
+        if (!isMounted) return;
+        setProjet(projetData);
 
-          const livrablesResponse = await axios.get(
-            `http://localhost:5000/projets/${id}/livrables`
-          );
-          setLivrables(livrablesResponse.data);
+        // 2. Préparer les requêtes pour les données liées (livrables et équipe)
+        const requests = [
+          axios.get(`http://localhost:5000/projets/${id}/livrables`)
+        ];
 
-          // Récupérer les membres de l'équipe si le projet en a une
-          console.log(`🔍 Vérification équipe - Projet ID: ${id}, Id_equipe: ${projetResponse.data.Id_equipe}`);
-
-          if (projetResponse.data.Id_equipe) {
-            try {
-              console.log(`👥 Récupération des membres pour l'équipe ${projetResponse.data.Id_equipe}`);
-              const membresResponse = await axios.get(
-                `http://localhost:5000/projets/${id}/equipe`
-              );
-              console.log(`✅ Membres reçus:`, membresResponse.data);
-              setMembresEquipe(membresResponse.data);
-            } catch (membresErr) {
-              console.error("❌ Erreur lors de la récupération des membres de l'équipe :", membresErr.response?.data || membresErr.message);
-              setMembresEquipe([]);
-            }
-          } else {
-            console.log(`📋 Pas d'équipe pour ce projet`);
-            setMembresEquipe([]);
-          }
-
-          setLoading(false);
-          setTimeout(() => {
-            feather.replace();
-          }, 0);
-        } catch (err) {
-          console.error("Erreur lors de la récupération des données :", err);
-          setError("Projet introuvable ou erreur de chargement.");
-          setLoading(false);
+        // Ajouter la requête pour l'équipe seulement si Id_equipe existe
+        if (projetData.Id_equipe) {
+          console.log(`🔍 Le projet a une équipe (ID: ${projetData.Id_equipe}). Récupération des membres.`);
+          requests.push(axios.get(`http://localhost:5000/projets/${id}/equipe`));
+        } else {
+          console.log("📋 Ce projet est individuel.");
+          if (isMounted) setMembresEquipe([]); // Assurer que l'état est vide
         }
-      };
 
-      fetchData();
-    } catch (err) {
-      console.error("Erreur de parsing des données utilisateur :", err);
-      localStorage.clear();
-      navigate("/login");
-    }
+        // 3. Exécuter les requêtes en parallèle
+        const [livrablesResponse, membresResponse] = await Promise.all(requests);
+
+        if (!isMounted) return;
+
+        // 4. Mettre à jour les états
+        setLivrables(livrablesResponse.data);
+
+        // Si la requête pour les membres a été faite, mettre à jour l'état
+        if (membresResponse) {
+          console.log(`✅ Membres reçus:`, membresResponse.data);
+          console.log(`📊 Nombre de membres: ${membresResponse.data.length}`);
+          setMembresEquipe(membresResponse.data);
+        }
+
+      } catch (err) {
+        console.error("❌ Erreur lors de la récupération des données :", err);
+        if (isMounted) {
+          setError("Projet introuvable ou erreur de chargement.");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+          setTimeout(() => feather.replace(), 0); // Lancer feather après le rendu
+        }
+      }
+    };
+
+    fetchData();
+
+    // Fonction de nettoyage pour useEffect
+    return () => {
+      isMounted = false;
+    };
   }, [id, navigate]);
 
   if (loading) {
@@ -107,8 +114,13 @@ const ProjectDetails = () => {
   }
 
   // Utiliser les membres de l'équipe récupérés depuis le backend
-  // Si pas de membres d'équipe, afficher seulement l'étudiant actuel
-  const membres = membresEquipe.length > 0 ? membresEquipe : [];
+  const membres = membresEquipe && membresEquipe.length > 0 ? membresEquipe : [];
+  console.log(`👥 Affichage équipe - Nombre de membres: ${membres.length}`, membres);
+  console.log(`🔍 DEBUG - Projet Id_equipe: ${projet?.Id_equipe}`);
+  console.log(`🔍 DEBUG - membresEquipe state:`, membresEquipe);
+  console.log(`🔍 DEBUG - membres array:`, membres);
+  console.log(`🔍 DEBUG - membres.length > 0 ?`, membres.length > 0);
+  console.log(`🔍 DEBUG - Condition membres.length > 0:`, membres.length > 0 ? 'AFFICHER MEMBRES' : 'AFFICHER MESSAGE INDIVIDUEL');
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
@@ -270,39 +282,39 @@ const ProjectDetails = () => {
 
           {/* Team */}
            <section className="bg-white p-6 rounded-lg shadow mb-8">
-             <h2 className="text-lg font-medium text-gray-900 mb-4">
-               Équipe {membres.length > 0 ? `(${membres.length} membre${membres.length > 1 ? 's' : ''})` : '(Projet individuel)'}
-             </h2>
-             {membres.length > 0 ? (
-               <div className="space-y-4">
-                 {membres.map((membre, index) => (
-                   <div key={membre.Immatricule || index} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                     <img
-                       className="h-10 w-10 rounded-full mr-3 border-2 border-white"
-                       src={`http://static.photos/people/200x200/${(membre.Immatricule % 10) + 1 || index + 2}`}
-                       alt={membre.Nom}
-                     />
-                     <div className="flex-1">
-                       <p className="text-gray-900 font-medium">{membre.Nom}</p>
-                       <p className="text-gray-500 text-sm">{membre.Email}</p>
-                       <p className="text-gray-500 text-xs">Immatricule: {membre.Immatricule}</p>
-                     </div>
-                     {membre.Niveau && (
-                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                         {membre.Niveau}
-                       </span>
-                     )}
-                   </div>
-                 ))}
-               </div>
-             ) : (
-               <div className="text-center py-8">
-                 <i data-feather="user" className="h-12 w-12 text-gray-300 mx-auto mb-3"></i>
-                 <p className="text-gray-500">Ce projet est individuel</p>
-                 <p className="text-gray-400 text-sm mt-1">Aucun membre d'équipe à afficher</p>
-               </div>
-             )}
-           </section>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Équipe {membres && membres.length > 0 ? `(${membres.length} membre${membres.length > 1 ? 's' : ''})` : '(Projet individuel)'}
+              </h2>
+              {membres && membres.length > 0 ? (
+                <div className="space-y-4">
+                  {membres.map((membre, index) => (
+                    <div key={membre.Immatricule || index} className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <img
+                        className="h-10 w-10 rounded-full mr-3 border-2 border-white"
+                        src={`http://static.photos/people/200x200/${(membre.Immatricule % 10) + 1 || index + 2}`}
+                        alt={membre.Nom}
+                      />
+                      <div className="flex-1">
+                        <p className="text-gray-900 font-medium">{membre.Nom}</p>
+                        <p className="text-gray-500 text-sm">{membre.Email}</p>
+                        <p className="text-gray-500 text-xs">Immatricule: {membre.Immatricule}</p>
+                      </div>
+                      {membre.Niveau && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                          {membre.Niveau}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <i data-feather="user" className="h-12 w-12 text-gray-300 mx-auto mb-3"></i>
+                  <p className="text-gray-500">Ce projet est individuel</p>
+                  <p className="text-gray-400 text-sm mt-1">Aucun membre d'équipe à afficher</p>
+                </div>
+              )}
+            </section>
 
           {/* Livrables */}
           <section className="bg-white p-6 rounded-lg shadow mb-8">

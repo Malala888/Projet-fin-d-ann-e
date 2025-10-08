@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Interface Équipes</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test Interface Équipes</h1>
+    <button onclick="testerProjet5()">Tester Projet 5</button>
+    <button onclick="testerProjet6()">Tester Projet 6</button>
+    <div id="resultat"></div>
+
+    <script>
+        async function testerProjet(projetId) {
+            document.getElementById('resultat').innerHTML = `Test du projet ${projetId}...`;
+
+            try {
+                // Récupérer le projet
+                const projetResponse = await axios.get(`http://localhost:5000/projets/${projetId}`);
+                const projet = projetResponse.data;
+
+                console.log('Projet:', projet);
+
+                let resultat = `<h2>Projet ${projetId}: ${projet.Theme}</h2>`;
+                resultat += `<p><strong>Id_equipe:</strong> ${projet.Id_equipe}</p>`;
+
+                if (projet.Id_equipe) {
+                    // Récupérer les membres
+                    const membresResponse = await axios.get(`http://localhost:5000/projets/${projetId}/equipe`);
+                    const membres = membresResponse.data;
+
+                    console.log('Membres:', membres);
+
+                    resultat += `<p><strong>Nombre de membres:</strong> ${membres.length}</p>`;
+                    resultat += `<h3>Membres de l'équipe:</h3>`;
+                    resultat += `<ul>`;
+
+                    membres.forEach(membre => {
+                        resultat += `<li>${membre.Nom} (${membre.Immatricule}) - ${membre.Email}</li>`;
+                    });
+
+                    resultat += `</ul>`;
+
+                    // Logique de rendu comme dans le frontend
+                    const membresAffichage = membres.length > 0 ? membres : [];
+                    const condition = membresAffichage.length > 0;
+
+                    resultat += `<h3>Logique de rendu:</h3>`;
+                    resultat += `<p>Condition membres.length > 0: <strong>${condition ? 'AFFICHER MEMBRES' : 'AFFICHER MESSAGE INDIVIDUEL'}</strong></p>`;
+
+                    if (condition) {
+                        resultat += `<p style="color: green;">✅ Les membres devraient s'afficher correctement</p>`;
+                    } else {
+                        resultat += `<p style="color: red;">❌ Le message "projet individuel" va s'afficher</p>`;
+                    }
+                } else {
+                    resultat += `<p style="color: red;">❌ Projet sans équipe</p>`;
+                }
+
+                document.getElementById('resultat').innerHTML = resultat;
+
+            } catch (error) {
+                document.getElementById('resultat').innerHTML = `Erreur: ${error.message}`;
+                console.error('Erreur:', error);
+            }
+        }
+
+        function testerProjet5() {
+            testerProjet(5);
+        }
+
+        function testerProjet6() {
+            testerProjet(6);
+        }
+    </script>
+</body>
+</html>

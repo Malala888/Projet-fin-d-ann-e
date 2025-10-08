@@ -36,7 +36,7 @@ function App() {
         <Route path='/mes_projet' element={<MesProjet/>} />
         <Route path='/parametre' element={<Parametre/>} />
         <Route path='/parametre_etudiant' element={<ParametreEtudiant/>} />
-        <Route path='//projet_detail/:id' element={<ProjetDetail/>} />
+        <Route path='/projet_detail/:id' element={<ProjetDetail/>} />
         <Route path='/statistique' element={<Statistique/>} />
         <Route path='/statistique_etudiant' element={<StatistiqueEtudiant/>} />
         <Route path='/etudiant_detail' element={<EtudiantDetail/>} />

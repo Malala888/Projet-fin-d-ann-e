@@ -156,24 +156,37 @@ app.get("/encadreurs/:id", async (req, res) => {
 
 // ------------------- ROUTES PROJETS -------------------
 app.get("/etudiants/:id/projets", async (req, res) => {
-   try {
-     const [rows] = await pool.query(
-       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur,
-               E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
-        FROM projet P
-        JOIN encadreur E ON P.Id_encadreur = E.Matricule
-        WHERE P.Id_etudiant = ?`,
-       [req.params.id]
-     );
+  const etudiantId = req.params.id;
+  try {
+    // D'abord, récupérer l'Id_equipe de l'étudiant, s'il en a un.
+    const [etudiantRows] = await pool.query(
+      "SELECT Id_equipe FROM etudiant WHERE Immatricule = ?",
+      [etudiantId]
+    );
+    const etudiantEquipeId = etudiantRows.length > 0 ? etudiantRows[0].Id_equipe : null;
 
-     console.log(`📋 Projets récupérés pour l'étudiant ${req.params.id}:`, rows.length);
-     console.log("🔍 Détails du premier projet:", rows[0]);
+    // Requête pour récupérer les projets :
+    // 1. Les projets où l'étudiant est le créateur (Id_etudiant)
+    // 2. OU les projets qui appartiennent à son équipe (Id_equipe)
+    // On utilise DISTINCT pour éviter les doublons si un étudiant est créateur ET dans l'équipe.
+    const query = `
+      SELECT DISTINCT
+        P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe,
+        E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
+      FROM projet P
+      JOIN encadreur E ON P.Id_encadreur = E.Matricule
+      WHERE P.Id_etudiant = ? OR (P.Id_equipe IS NOT NULL AND P.Id_equipe = ?)
+    `;
 
-     res.json(rows);
-   } catch (err) {
-     console.error("❌ Erreur récupération projets:", err);
-     res.status(500).json({ error: "Erreur récupération projets" });
-   }
+    const [projetRows] = await pool.query(query, [etudiantId, etudiantEquipeId]);
+
+    console.log(`📋 Projets récupérés pour l'étudiant ${etudiantId}:`, projetRows.length);
+    res.json(projetRows);
+
+  } catch (err) {
+    console.error("❌ Erreur récupération projets de l'étudiant:", err);
+    res.status(500).json({ error: "Erreur lors de la récupération des projets" });
+  }
 });
 
 // GET projet spécifique avec détails complets
@@ -313,96 +326,37 @@ app.post("/equipes", async (req, res) => {
   }
 });
 
-// POST créer un nouveau projet - VERSION CORRIGÉE
+// POST créer un nouveau projet - VERSION SIMPLIFIÉE
 app.post("/projets", async (req, res) => {
   const { theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe } = req.body;
 
-  console.log("=== DEBUG REQUÊTE PROJET ===");
-  console.log("Corps de la requête reçu:", JSON.stringify(req.body, null, 2));
-
-  // Validation des champs
+  // Validation simple
   if (!theme || !description || !date_debut || !date_fin || !id_encadreur || !id_etudiant) {
-      return res.status(400).json({ error: "Tous les champs requis ne sont pas fournis." });
+    return res.status(400).json({ error: "Tous les champs requis ne sont pas fournis." });
   }
 
-  const connection = await pool.getConnection(); // Récupérer une connexion du pool
-
   try {
-      await connection.beginTransaction(); // Démarrer la transaction
+    // La logique est maintenant beaucoup plus simple : on insère juste UNE ligne.
+    const [result] = await pool.query(
+      `INSERT INTO projet (Theme, Description, Date_deb, Date_fin, Id_encadreur, Id_etudiant, Id_equipe, Avancement)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe || null, 0]
+    );
+    const projetId = result.insertId;
 
-      // Vérifier que l'encadreur existe
-      const [encadreurCheck] = await connection.query("SELECT Matricule FROM encadreur WHERE Matricule = ?", [id_encadreur]);
-      if (encadreurCheck.length === 0) {
-          throw new Error("Encadreur non trouvé");
-      }
+    console.log(`✅ Projet unique créé avec ID: ${projetId}, pour l'équipe: ${id_equipe || 'N/A'}`);
 
-      // Vérifier que l'étudiant existe
-      const [etudiantCheck] = await connection.query("SELECT Immatricule FROM etudiant WHERE Immatricule = ?", [id_etudiant]);
-      if (etudiantCheck.length === 0) {
-          throw new Error("Étudiant non trouvé");
-      }
+    // La logique pour mettre à jour les membres de l'équipe est déjà dans ta route POST /equipes.
+    // Il faut s'assurer que l'interface appelle cette route correctement avant la création du projet.
 
-      // Si une équipe est spécifiée, vérifier qu'elle existe
-      if (id_equipe) {
-          const [equipeCheck] = await connection.query("SELECT Id_equipe FROM equipe WHERE Id_equipe = ?", [id_equipe]);
-          if (equipeCheck.length === 0) {
-              throw new Error("Équipe non trouvée");
-          }
-      }
-
-      // Créer le projet principal
-      const [result] = await connection.query(
-          `INSERT INTO projet (Theme, Description, Date_deb, Date_fin, Id_encadreur, Id_etudiant, Id_equipe, Avancement)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe || null, 0]
-      );
-      const projetId = result.insertId;
-      console.log(`✅ Projet créé avec ID: ${projetId}, Id_equipe sauvegardé: ${id_equipe || null}`);
-
-      // Si une équipe est spécifiée, ajouter les autres membres au projet
-      if (id_equipe) {
-          const [membresEquipe] = await connection.query("SELECT Immatricule FROM etudiant WHERE Id_equipe = ?", [id_equipe]);
-          console.log(`👥 Ajout de ${membresEquipe.length} membres de l'équipe au projet ${projetId}`);
-
-          for (const membre of membresEquipe) {
-              if (membre.Immatricule !== id_etudiant) { // Ne pas créer de doublon pour le créateur
-                  await connection.query(
-                      `INSERT INTO projet (Theme, Description, Date_deb, Date_fin, Id_encadreur, Id_etudiant, Id_equipe, Avancement)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                      [theme, description, date_debut, date_fin, id_encadreur, membre.Immatricule, id_equipe, 0]
-                  );
-                  console.log(`✅ Membre ${membre.Immatricule} ajouté au projet ${projetId}`);
-              }
-          }
-      }
-
-      // Récupérer les détails du projet créé pour la réponse
-      const [projetRows] = await connection.query(
-          `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_equipe,
-                  E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
-           FROM projet P
-           JOIN encadreur E ON P.Id_encadreur = E.Matricule
-           WHERE P.Id_projet = ?`,
-          [projetId]
-      );
-
-      await connection.commit(); // Valider toutes les opérations si tout s'est bien passé
-
-      res.status(201).json({
-          message: "Projet créé avec succès",
-          projet: projetRows[0],
-          id_equipe: id_equipe
-      });
+    res.status(201).json({
+      message: "Projet créé avec succès",
+      id_projet: projetId
+    });
 
   } catch (err) {
-      await connection.rollback(); // Annuler toutes les opérations en cas d'erreur
-      console.error("❌ Erreur création projet (transaction annulée) :", err);
-      res.status(500).json({
-          error: "Erreur lors de la création du projet",
-          details: err.message
-      });
-  } finally {
-      connection.release(); // TRÈS IMPORTANT: Libérer la connexion pour la remettre dans le pool
+    console.error("❌ Erreur lors de la création du projet :", err);
+    res.status(500).json({ error: "Erreur lors de la création du projet", details: err.message });
   }
 });
 
