@@ -682,6 +682,43 @@ const ModalModifierProjet = ({ isOpen, onClose, onProjetModifie, projet, etudian
 };
 
 
+// NOUVEAU : Modal de confirmation pour la suppression
+const ModalConfirmationSuppression = ({ isOpen, onClose, onConfirm, projet }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-60 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg w-full max-w-md shadow-2xl p-6 text-center">
+        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+          <i data-feather="alert-triangle" className="h-6 w-6 text-red-600" />
+        </div>
+        <h3 className="text-lg font-semibold text-gray-800 mt-4">Confirmer la suppression</h3>
+        <p className="text-sm text-gray-600 mt-2">
+          Êtes-vous sûr de vouloir supprimer le projet : <br />
+          <strong className="font-medium">{projet?.Theme}</strong> ? <br />
+          Cette action est irréversible.
+        </p>
+        <div className="mt-6 flex justify-center gap-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-2 border rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+          >
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Le reste du composant MesProjets reste inchangé...
 const MesProjets = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -690,6 +727,9 @@ const MesProjets = () => {
     const [isModalAjoutOpen, setIsModalAjoutOpen] = useState(false);
     const [isModalModifierOpen, setIsModalModifierOpen] = useState(false);
     const [projetAmodifier, setProjetAmodifier] = useState(null);
+    // NOUVEAU : État pour gérer le modal de suppression
+    const [projetASupprimer, setProjetASupprimer] = useState(null);
+    const [deleteSuccessMessage, setDeleteSuccessMessage] = useState('');
     const navigate = useNavigate();
 
     const openEmailWindow = (projet) => {
@@ -719,6 +759,31 @@ const MesProjets = () => {
             .catch((error) => console.error("Erreur lors du rafraîchissement des projets :", error));
         setIsModalModifierOpen(false);
         setProjetAmodifier(null);
+    };
+
+    // NOUVEAU : Fonction pour confirmer et exécuter la suppression
+    const handleConfirmDelete = async () => {
+        if (!projetASupprimer) return;
+
+        try {
+            await axios.delete(`http://localhost:5000/projets/${projetASupprimer.Id_projet}`);
+
+            // Mettre à jour la liste des projets directement côté client pour une meilleure réactivité
+            setProjets(projets.filter(p => p.Id_projet !== projetASupprimer.Id_projet));
+
+            // Afficher le message de succès
+            setDeleteSuccessMessage(`Projet "${projetASupprimer.Theme}" supprimé avec succès !`);
+
+            // Fermer le modal et nettoyer le message après 3 secondes
+            setProjetASupprimer(null);
+            setTimeout(() => {
+                setDeleteSuccessMessage('');
+            }, 3000);
+
+        } catch (error) {
+            console.error("Erreur lors de la suppression du projet :", error);
+            // Optionnel : afficher une notification d'erreur
+        }
     };
 
     useEffect(() => {
@@ -797,6 +862,13 @@ const MesProjets = () => {
                         <h1 className="text-3xl font-bold text-gray-800">Mes projets</h1>
                         <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center" onClick={() => { console.log('Ouverture du modal'); setIsModalAjoutOpen(true); }}><i data-feather="plus" className="mr-2 h-4 w-4"></i>Nouveau projet</button>
                     </div>
+
+                    {/* NOUVEAU : Message de succès de suppression */}
+                    {deleteSuccessMessage && (
+                        <div className="mb-4 text-sm text-green-800 bg-green-100 p-3 rounded-lg border border-green-300">
+                            {deleteSuccessMessage}
+                        </div>
+                    )}
                     <div className="overflow-x-auto bg-white shadow rounded-lg">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
@@ -817,7 +889,7 @@ const MesProjets = () => {
                                             <td className="px-6 py-4 text-sm text-gray-500">{projet.Date_fin ? new Date(projet.Date_fin).toLocaleDateString('fr-FR') : 'Non définie'}</td>
                                             <td className="px-6 py-4"><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${projet.Avancement}%` }}></div></div><p className="text-xs text-gray-500 mt-1">{projet.Avancement}% complété</p></td>
                                             <td className="px-6 py-4 text-sm font-medium">
-                                              <div className="flex items-center space-x-2">
+                                              <div className="flex items-center space-x-3">
                                                 <Link to={`/projet_detail/${projet.Id_projet}`} className="text-blue-600 hover:text-blue-900" title="Voir les détails">
                                                   <i data-feather="eye"></i>
                                                 </Link>
@@ -826,6 +898,10 @@ const MesProjets = () => {
                                                 </button>
                                                 <button onClick={() => handleModifierProjet(projet)} className="text-orange-600 hover:text-orange-900" title="Modifier le projet">
                                                   <i data-feather="edit"></i>
+                                                </button>
+                                                {/* NOUVEAU : Bouton de suppression */}
+                                                <button onClick={() => setProjetASupprimer(projet)} className="text-red-600 hover:text-red-900" title="Supprimer le projet">
+                                                  <i data-feather="trash-2"></i>
                                                 </button>
                                               </div>
                                             </td>
@@ -849,6 +925,14 @@ const MesProjets = () => {
               onProjetModifie={handleProjetModifie}
               projet={projetAmodifier}
               etudiant={etudiant}
+            />
+
+            {/* NOUVEAU : On ajoute le modal de confirmation ici */}
+            <ModalConfirmationSuppression
+              isOpen={!!projetASupprimer}
+              onClose={() => setProjetASupprimer(null)}
+              onConfirm={handleConfirmDelete}
+              projet={projetASupprimer}
             />
         </div>
     );

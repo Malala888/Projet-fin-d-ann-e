@@ -428,6 +428,36 @@ app.put("/projets/:id", async (req, res) => {
   }
 });
 
+// DELETE un projet
+app.delete("/projets/:id", async (req, res) => {
+  const projetId = req.params.id;
+  console.log(`🗑️ Tentative de suppression du projet ID: ${projetId}`);
+
+  try {
+    // D'abord, on vérifie si le projet existe pour éviter les erreurs fantômes
+    const [projetCheck] = await pool.query("SELECT Id_projet FROM projet WHERE Id_projet = ?", [projetId]);
+    if (projetCheck.length === 0) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    // On supprime le projet.
+    // La base de données s'occupera de supprimer les livrables associés grâce à "ON DELETE CASCADE".
+    const [result] = await pool.query("DELETE FROM projet WHERE Id_projet = ?", [projetId]);
+
+    if (result.affectedRows === 0) {
+      // Si aucune ligne n'a été supprimée, c'est qu'il y a eu un problème
+      return res.status(400).json({ error: "La suppression a échoué" });
+    }
+
+    console.log(`✅ Projet ${projetId} supprimé avec succès.`);
+    res.json({ message: "Projet supprimé avec succès" });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la suppression du projet :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la suppression", details: err.message });
+  }
+});
+
 // PUT modifier une équipe existante
 app.put("/equipes/:id", async (req, res) => {
   const { nom_equipe, membres } = req.body;
