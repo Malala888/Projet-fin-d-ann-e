@@ -171,7 +171,7 @@ app.get("/etudiants/:id/projets", async (req, res) => {
     // On utilise DISTINCT pour éviter les doublons si un étudiant est créateur ET dans l'équipe.
     const query = `
       SELECT DISTINCT
-        P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe,
+        P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe, P.Id_etudiant,
         E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
       FROM projet P
       JOIN encadreur E ON P.Id_encadreur = E.Matricule
@@ -189,22 +189,25 @@ app.get("/etudiants/:id/projets", async (req, res) => {
   }
 });
 
-// GET projet spécifique avec détails complets
+// GET projet spécifique avec détails complets (VERSION AMÉLIORÉE)
 app.get("/projets/:id", async (req, res) => {
    try {
      const [rows] = await pool.query(
        `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe,
                E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
-               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant
+               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant,
+               EQ.Nom_equipe  -- On ajoute le nom de l'équipe ici
         FROM projet P
         JOIN encadreur E ON P.Id_encadreur = E.Matricule
         JOIN etudiant ET ON P.Id_etudiant = ET.Immatricule
+        LEFT JOIN equipe EQ ON P.Id_equipe = EQ.Id_equipe -- On utilise LEFT JOIN au cas où il n'y a pas d'équipe
         WHERE P.Id_projet = ?`,
        [req.params.id]
      );
      if (rows.length === 0) return res.status(404).json({ error: "Projet introuvable" });
      res.json(rows[0]);
    } catch (err) {
+     console.error("❌ Erreur récupération projet détaillé:", err);
      res.status(500).json({ error: "Erreur récupération projet" });
    }
 });
@@ -357,6 +360,131 @@ app.post("/projets", async (req, res) => {
   } catch (err) {
     console.error("❌ Erreur lors de la création du projet :", err);
     res.status(500).json({ error: "Erreur lors de la création du projet", details: err.message });
+  }
+});
+
+// PUT modifier un projet existant
+app.put("/projets/:id", async (req, res) => {
+  const { theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe } = req.body;
+  const projetId = req.params.id;
+
+  console.log("📝 Modification du projet:", projetId);
+  console.log("Données reçues:", req.body);
+
+  // Validation des champs
+  if (!theme || !description || !date_debut || !date_fin || !id_encadreur || !id_etudiant) {
+    return res.status(400).json({ error: "Tous les champs requis ne sont pas fournis." });
+  }
+
+  try {
+    // Vérifier que le projet existe
+    const [projetCheck] = await pool.query("SELECT Id_projet FROM projet WHERE Id_projet = ?", [projetId]);
+    if (projetCheck.length === 0) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    // Vérifier que l'encadreur existe
+    const [encadreurCheck] = await pool.query("SELECT Matricule FROM encadreur WHERE Matricule = ?", [id_encadreur]);
+    if (encadreurCheck.length === 0) {
+      return res.status(400).json({ error: "Encadreur non trouvé" });
+    }
+
+    // Vérifier que l'étudiant existe
+    const [etudiantCheck] = await pool.query("SELECT Immatricule FROM etudiant WHERE Immatricule = ?", [id_etudiant]);
+    if (etudiantCheck.length === 0) {
+      return res.status(400).json({ error: "Étudiant non trouvé" });
+    }
+
+    // Si une équipe est spécifiée, vérifier qu'elle existe
+    if (id_equipe) {
+      const [equipeCheck] = await pool.query("SELECT Id_equipe FROM equipe WHERE Id_equipe = ?", [id_equipe]);
+      if (equipeCheck.length === 0) {
+        return res.status(400).json({ error: "Équipe non trouvée" });
+      }
+    }
+
+    // Mettre à jour le projet
+    const [result] = await pool.query(
+      `UPDATE projet
+       SET Theme = ?, Description = ?, Date_deb = ?, Date_fin = ?, Id_encadreur = ?, Id_etudiant = ?, Id_equipe = ?
+       WHERE Id_projet = ?`,
+      [theme, description, date_debut, date_fin, id_encadreur, id_etudiant, id_equipe || null, projetId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: "Aucune modification effectuée" });
+    }
+
+    console.log(`✅ Projet ${projetId} modifié avec succès`);
+
+    res.json({
+      message: "Projet modifié avec succès",
+      id_projet: projetId
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la modification du projet :", err);
+    res.status(500).json({ error: "Erreur lors de la modification du projet", details: err.message });
+  }
+});
+
+// PUT modifier une équipe existante
+app.put("/equipes/:id", async (req, res) => {
+  const { nom_equipe, membres } = req.body;
+  const equipeId = req.params.id;
+
+  console.log("👥 Modification de l'équipe:", equipeId);
+  console.log("Données reçues:", req.body);
+
+  if (!nom_equipe || !Array.isArray(membres)) {
+    return res.status(400).json({ error: "Nom de l'équipe et liste des membres requis" });
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Vérifier que l'équipe existe
+    const [equipeCheck] = await connection.query("SELECT Id_equipe FROM equipe WHERE Id_equipe = ?", [equipeId]);
+    if (equipeCheck.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Équipe non trouvée" });
+    }
+
+    // Mettre à jour le nom de l'équipe
+    await connection.query(
+      "UPDATE equipe SET Nom_equipe = ? WHERE Id_equipe = ?",
+      [nom_equipe, equipeId]
+    );
+
+    // D'abord, supprimer tous les membres actuels de l'équipe
+    await connection.query("UPDATE etudiant SET Id_equipe = NULL WHERE Id_equipe = ?", [equipeId]);
+
+    // Ensuite, ajouter les nouveaux membres
+    for (const membreId of membres) {
+      await connection.query(
+        "UPDATE etudiant SET Id_equipe = ? WHERE Immatricule = ?",
+        [equipeId, membreId]
+      );
+    }
+
+    await connection.commit();
+    console.log(`✅ Équipe ${equipeId} modifiée avec succès`);
+
+    res.json({
+      message: "Équipe modifiée avec succès",
+      id_equipe: equipeId,
+      nom_equipe: nom_equipe,
+      membres_ajoutes: membres.length
+    });
+
+  } catch (err) {
+    await connection.rollback();
+    console.error("❌ Erreur lors de la modification de l'équipe :", err);
+    res.status(500).json({ error: "Erreur lors de la modification de l'équipe", details: err.message });
+  } finally {
+    connection.release();
   }
 });
 

@@ -330,6 +330,357 @@ const ModalAjoutProjet = ({ isOpen, onClose, onProjetAjoute, etudiant }) => {
   );
 };
 
+// Modal de modification de projet
+const ModalModifierProjet = ({ isOpen, onClose, onProjetModifie, projet, etudiant }) => {
+  const formRef = useRef(null);
+  const modalRef = useRef(null);
+
+  const [formData, setFormData] = useState({
+    theme: '',
+    description: '',
+    date_debut: '',
+    date_fin: '',
+    id_encadreur: '',
+    nom_equipe: '',
+    membres_equipe: []
+  });
+  const [encadreurs, setEncadreurs] = useState([]);
+  const [etudiants, setEtudiants] = useState([]);
+  const [membresEquipeActuels, setMembresEquipeActuels] = useState([]);
+  const [nouveauMembre, setNouveauMembre] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState(''); // Pour le message de succès
+
+  // Charger données quand modal s'ouvre
+  useEffect(() => {
+    if (!isOpen || !projet) return;
+
+    setErrorMessage('');
+    setSuccessMessage(''); // Réinitialiser le message de succès
+
+    // Charger les listes générales
+    axios.get('http://localhost:5000/encadreurs').then(r => setEncadreurs(r.data)).catch(console.error);
+    axios.get('http://localhost:5000/etudiants').then(r => setEtudiants(r.data)).catch(console.error);
+
+    // Initialiser le formulaire avec les données de base du projet
+    const dateDebut = projet.Date_deb ? new Date(projet.Date_deb).toISOString().split('T')[0] : '';
+    const dateFin = projet.Date_fin ? new Date(projet.Date_fin).toISOString().split('T')[0] : '';
+
+    setFormData({
+      theme: projet.Theme || '',
+      description: projet.Description || '',
+      date_debut: dateDebut,
+      date_fin: dateFin,
+      id_encadreur: projet.Id_encadreur || '',
+      // On initialise le nom et les membres ici, ils seront remplis par les appels API
+      nom_equipe: '',
+      membres_equipe: []
+    });
+
+    // Charger les détails de l'équipe (nom et membres)
+    if (projet.Id_equipe) {
+      // On récupère le nom de l'équipe via la route projet améliorée
+      axios.get(`http://localhost:5000/projets/${projet.Id_projet}`)
+        .then(response => {
+          setFormData(prev => ({ ...prev, nom_equipe: response.data.Nom_equipe || '' }));
+        })
+        .catch(error => console.error("Erreur chargement nom équipe:", error));
+
+      // On récupère les membres de l'équipe
+      axios.get(`http://localhost:5000/projets/${projet.Id_projet}/equipe`)
+        .then(response => {
+          // On initialise l'état avec les membres actuels
+          const membresSansLeCreateur = response.data.filter(m => m.Immatricule !== etudiant.Immatricule);
+          setFormData(prev => ({...prev, membres_equipe: membresSansLeCreateur }));
+        })
+        .catch(error => {
+          console.error("Erreur chargement membres équipe :", error);
+          setErrorMessage("Impossible de charger les membres de l'équipe.");
+        });
+    }
+
+    setTimeout(() => { if (window.feather) window.feather.replace(); }, 100);
+  }, [isOpen, projet, etudiant]);
+
+  // Ajout / suppression membre
+  const ajouterMembreEquipe = () => {
+    if (!nouveauMembre) return;
+
+    if (formData.membres_equipe.find(m => m.Immatricule?.toString() === nouveauMembre.toString())) {
+      return;
+    }
+
+    const found = etudiants.find(e => e.Immatricule?.toString() === nouveauMembre.toString());
+    if (!found) {
+      setErrorMessage('Membre introuvable — recharge la liste et réessaie.');
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, membres_equipe: [...prev.membres_equipe, found] }));
+    setNouveauMembre('');
+    setErrorMessage('');
+  };
+
+  const supprimerMembreEquipe = (immatricule) => {
+    setFormData(prev => ({
+      ...prev,
+      membres_equipe: prev.membres_equipe.filter(m => m.Immatricule !== immatricule)
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+    setLoading(true);
+
+    try {
+      if (!formData.theme || !formData.description || !formData.date_debut || !formData.date_fin || !formData.id_encadreur) {
+        throw new Error("Veuillez remplir tous les champs obligatoires.");
+      }
+      if (new Date(formData.date_debut) >= new Date(formData.date_fin)) {
+        throw new Error("La date de fin doit être après la date de début.");
+      }
+
+      // 1. Gérer l'équipe
+      let equipeId = projet.Id_equipe;
+      // Si une équipe existe et que son nom a été modifié ou ses membres ont changé
+      if (equipeId && formData.nom_equipe) {
+        const membresIds = [projet.Id_etudiant, ...formData.membres_equipe.map(m => m.Immatricule)];
+        const equipeData = {
+          nom_equipe: formData.nom_equipe.trim(),
+          membres: Array.from(new Set(membresIds))
+        };
+        await axios.put(`http://localhost:5000/equipes/${equipeId}`, equipeData);
+      }
+
+      // 2. Mettre à jour le projet avec toutes les informations
+      const projetData = {
+        theme: formData.theme.trim(),
+        description: formData.description.trim(),
+        date_debut: formData.date_debut,
+        date_fin: formData.date_fin,
+        id_encadreur: parseInt(formData.id_encadreur, 10),
+        id_etudiant: projet.Id_etudiant,
+        id_equipe: equipeId
+      };
+      await axios.put(`http://localhost:5000/projets/${projet.Id_projet}`, projetData);
+
+      // 3. Afficher le succès et fermer
+      setSuccessMessage('Projet modifié avec succès !');
+      setTimeout(() => {
+        onProjetModifie();
+        onClose();
+      }, 1500);
+
+    } catch (err) {
+      setErrorMessage(err.response?.data?.error || err.message || "Une erreur est survenue.");
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen || !projet) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-3">
+      <div
+        ref={modalRef}
+        className="bg-white rounded-lg w-full max-w-2xl shadow-2xl"
+        style={{
+          position: 'fixed',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          top: '5vh',
+          maxHeight: '90vh',
+          width: 'min(760px, calc(100% - 32px))',
+          overflowY: 'scroll',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <style>{`
+          #mesprojets-modal-modifier::-webkit-scrollbar { width: 10px; }
+          #mesprojets-modal-modifier::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 6px; }
+          #mesprojets-modal-modifier::-webkit-scrollbar-track { background: #f3f4f6; }
+          #mesprojets-modal-modifier { scrollbar-width: thin; scrollbar-color: #9ca3af #f3f4f6; }
+        `}</style>
+
+        {/* HEADER */}
+        <div className="sticky top-0 z-20 bg-white border-b p-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-800">Modifier le Projet</h3>
+          <button onClick={onClose} className="text-gray-600 hover:text-gray-800">
+            <i data-feather="x" className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* CONTENU */}
+        <div className="p-6">
+          {successMessage && <div className="mb-4 text-sm text-green-800 bg-green-100 p-3 rounded-lg border border-green-300">{successMessage}</div>}
+          {errorMessage && <div className="mb-4 text-sm text-red-800 bg-red-100 p-3 rounded-lg border border-red-300">{errorMessage}</div>}
+
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom du projet *</label>
+              <input
+                type="text"
+                className="w-full p-2 border rounded"
+                value={formData.theme}
+                onChange={(e) => setFormData(prev => ({ ...prev, theme: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
+              <textarea
+                rows={3}
+                className="w-full p-2 border rounded"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date de début *</label>
+                <input
+                  type="date"
+                  className="w-full p-2 border rounded"
+                  value={formData.date_debut}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date_debut: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date de fin *</label>
+                <input
+                  type="date"
+                  className="w-full p-2 border rounded"
+                  value={formData.date_fin}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date_fin: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Encadreur *</label>
+              <select
+                className="w-full p-2 border rounded"
+                value={formData.id_encadreur}
+                onChange={(e) => setFormData(prev => ({ ...prev, id_encadreur: e.target.value }))}
+                required
+              >
+                <option value="">Sélectionner un encadreur</option>
+                {encadreurs.map(enc => (
+                  <option key={enc.Matricule} value={enc.Matricule}>{enc.Nom} ({enc.Titre})</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Section Équipe (unifiée) */}
+            <div className="border-t pt-4 space-y-3">
+              <h4 className="text-md font-semibold text-gray-800">Gestion de l'équipe</h4>
+
+              {/* Champ pour modifier le nom de l'équipe */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nom de l'équipe
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded"
+                  value={formData.nom_equipe}
+                  onChange={(e) => setFormData(prev => ({ ...prev, nom_equipe: e.target.value }))}
+                  placeholder={projet.Id_equipe ? "Modifier le nom..." : "Nommer l'équipe pour ajouter des membres"}
+                />
+              </div>
+
+              {/* Section pour gérer les membres (visible si l'équipe a un nom) */}
+              {formData.nom_equipe && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Membres de l'équipe
+                  </label>
+                  {/* Sélecteur pour ajouter un nouveau membre */}
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      className="flex-1 p-2 border rounded"
+                      value={nouveauMembre}
+                      onChange={(e) => setNouveauMembre(e.target.value)}
+                    >
+                      <option value="">Ajouter un étudiant...</option>
+                      {etudiants
+                        .filter(e =>
+                          e.Immatricule !== etudiant.Immatricule && // Ne pas s'ajouter soi-même
+                          !formData.membres_equipe.find(m => m.Immatricule === e.Immatricule) // Ne pas ajouter un membre déjà présent
+                        )
+                        .map(e => (
+                          <option key={e.Immatricule} value={e.Immatricule}>
+                            {e.Nom} ({e.Immatricule})
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={ajouterMembreEquipe}
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+
+                  {/* Liste des membres déjà ajoutés */}
+                  {formData.membres_equipe.length > 0 && (
+                    <div className="border rounded bg-gray-50">
+                      <div className="p-2 border-b text-xs text-gray-600 font-medium">Membres actuels :</div>
+                      <div className="max-h-[160px] overflow-y-auto p-2 space-y-1">
+                        {formData.membres_equipe.map(m => (
+                          <div key={m.Immatricule} className="flex justify-between items-center bg-white p-2 rounded text-sm shadow-sm">
+                            <span>{m.Nom} ({m.Immatricule})</span>
+                            <button
+                              type="button"
+                              onClick={() => supprimerMembreEquipe(m.Immatricule)}
+                              className="text-red-500 hover:text-red-700"
+                              title="Supprimer le membre"
+                            >
+                              <i data-feather="x-circle" className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* FOOTER sticky bottom */}
+        <div className="sticky bottom-0 z-20 bg-gray-50 border-t p-4 flex justify-end gap-3 rounded-b-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border rounded-md text-gray-700 bg-white hover:bg-gray-100"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => formRef.current?.requestSubmit()}
+            disabled={loading || successMessage} // On désactive aussi si le succès est déjà affiché
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+          >
+            {loading ? 'Modification...' : 'Modifier le projet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // Le reste du composant MesProjets reste inchangé...
 const MesProjets = () => {
@@ -337,6 +688,8 @@ const MesProjets = () => {
     const [etudiant, setEtudiant] = useState(null);
     const [projets, setProjets] = useState([]);
     const [isModalAjoutOpen, setIsModalAjoutOpen] = useState(false);
+    const [isModalModifierOpen, setIsModalModifierOpen] = useState(false);
+    const [projetAmodifier, setProjetAmodifier] = useState(null);
     const navigate = useNavigate();
 
     const openEmailWindow = (projet) => {
@@ -353,6 +706,19 @@ const MesProjets = () => {
         axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/projets`)
             .then((response) => setProjets(response.data))
             .catch((error) => console.error("Erreur lors du rafraîchissement des projets :", error));
+    };
+
+    const handleModifierProjet = (projet) => {
+        setProjetAmodifier(projet);
+        setIsModalModifierOpen(true);
+    };
+
+    const handleProjetModifie = () => {
+        axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/projets`)
+            .then((response) => setProjets(response.data))
+            .catch((error) => console.error("Erreur lors du rafraîchissement des projets :", error));
+        setIsModalModifierOpen(false);
+        setProjetAmodifier(null);
     };
 
     useEffect(() => {
@@ -450,7 +816,19 @@ const MesProjets = () => {
                                             <td className="px-6 py-4"><div className="flex items-center"><img className="h-6 w-6 rounded-full mr-2" src={`http://static.photos/people/200x200/${(projet.Id_encadreur % 10) + 1 || 1}`} alt="" /><span>{`${projet.Nom_encadreur || 'Non défini'} ${projet.Titre_encadreur || ''}`}</span></div></td>
                                             <td className="px-6 py-4 text-sm text-gray-500">{projet.Date_fin ? new Date(projet.Date_fin).toLocaleDateString('fr-FR') : 'Non définie'}</td>
                                             <td className="px-6 py-4"><div className="w-full bg-gray-200 rounded-full h-2.5"><div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${projet.Avancement}%` }}></div></div><p className="text-xs text-gray-500 mt-1">{projet.Avancement}% complété</p></td>
-                                            <td className="px-6 py-4 text-sm font-medium"><Link to={`/projet_detail/${projet.Id_projet}`} className="text-blue-600 hover:text-blue-900 mr-3" title="Voir les détails"><i data-feather="eye"></i></Link><button onClick={() => openEmailWindow(projet)} className="text-green-600 hover:text-green-900" title="Envoyer un message"><i data-feather="message-square"></i></button></td>
+                                            <td className="px-6 py-4 text-sm font-medium">
+                                              <div className="flex items-center space-x-2">
+                                                <Link to={`/projet_detail/${projet.Id_projet}`} className="text-blue-600 hover:text-blue-900" title="Voir les détails">
+                                                  <i data-feather="eye"></i>
+                                                </Link>
+                                                <button onClick={() => openEmailWindow(projet)} className="text-green-600 hover:text-green-900" title="Envoyer un message">
+                                                  <i data-feather="message-square"></i>
+                                                </button>
+                                                <button onClick={() => handleModifierProjet(projet)} className="text-orange-600 hover:text-orange-900" title="Modifier le projet">
+                                                  <i data-feather="edit"></i>
+                                                </button>
+                                              </div>
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
@@ -462,6 +840,16 @@ const MesProjets = () => {
                 </main>
             </div>
             <ModalAjoutProjet isOpen={isModalAjoutOpen} onClose={() => setIsModalAjoutOpen(false)} onProjetAjoute={handleProjetAjoute} etudiant={etudiant} />
+            <ModalModifierProjet
+              isOpen={isModalModifierOpen}
+              onClose={() => {
+                setIsModalModifierOpen(false);
+                setProjetAmodifier(null);
+              }}
+              onProjetModifie={handleProjetModifie}
+              projet={projetAmodifier}
+              etudiant={etudiant}
+            />
         </div>
     );
 };
