@@ -78,28 +78,34 @@ const upload = multer({ storage });
 app.post("/login", async (req, res) => {
   const { email, password, role } = req.body;
   let table = "";
-  let idField = "";
 
+  // ... (le reste de ta logique if/else pour le rôle est correct)
   if (role === "etudiant") {
     table = "etudiant";
-    idField = "Immatricule";
   } else if (role === "encadreur") {
     table = "encadreur";
-    idField = "Matricule";
   } else if (role === "admin") {
     table = "admin";
-    idField = "Id_admin";
   } else {
     return res.status(400).json({ error: "Rôle invalide" });
   }
 
+
   try {
     const [rows] = await pool.query(
-      `SELECT ${idField}, Nom, Email FROM ${table} WHERE Email = ? AND Mot_de_passe = ? LIMIT 1`,
+      // On s'assure de bien tout sélectionner avec '*'
+      `SELECT * FROM ${table} WHERE Email = ? AND Mot_de_passe = ? LIMIT 1`,
       [email, password]
     );
-    if (rows.length === 0) return res.status(401).json({ error: "Identifiants invalides" });
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: "Identifiants invalides" });
+    }
+
+    // On renvoie directement l'objet utilisateur complet
+    // C'est cette ligne qui corrige le problème principal
     res.json({ message: "Connexion réussie", role, user: rows[0] });
+
   } catch (err) {
     console.error("Erreur login :", err);
     res.status(500).json({ error: "Erreur serveur" });
@@ -515,6 +521,87 @@ app.put("/equipes/:id", async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la modification de l'équipe", details: err.message });
   } finally {
     connection.release();
+  }
+});
+
+// server.js
+
+app.put("/etudiants/:id", async (req, res) => {
+  const etudiantId = req.params.id;
+  const { Nom, Email, Mot_de_passe, Filiere, Parcours } = req.body;
+
+  console.log(`📝 Mise à jour du profil pour l'étudiant ID: ${etudiantId}`);
+  
+  if (!Nom || !Email) {
+    return res.status(400).json({ error: "Le nom et l'email sont requis." });
+  }
+
+  try {
+    let finalPassword = Mot_de_passe;
+    // Si le champ mot de passe est laissé vide, on conserve l'ancien
+    if (!finalPassword) {
+      const [currentUser] = await pool.query("SELECT Mot_de_passe FROM etudiant WHERE Immatricule = ?", [etudiantId]);
+      if (currentUser.length > 0) {
+        finalPassword = currentUser[0].Mot_de_passe;
+      }
+    }
+
+    // On met à jour la base de données
+    await pool.query(
+      `UPDATE etudiant SET Nom = ?, Email = ?, Mot_de_passe = ?, Filiere = ?, Parcours = ? WHERE Immatricule = ?`,
+      [Nom, Email, finalPassword, Filiere || null, Parcours || null, etudiantId]
+    );
+
+    // On récupère l'utilisateur complet pour le renvoyer et mettre à jour l'interface
+    const [updatedUserRows] = await pool.query(
+        "SELECT * FROM etudiant WHERE Immatricule = ?",
+        [etudiantId]
+    );
+
+    console.log(`✅ Profil de l'étudiant ${etudiantId} mis à jour.`);
+
+    res.json({
+      message: "Profil mis à jour avec succès",
+      user: updatedUserRows[0] // On renvoie l'utilisateur complet mis à jour
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la mise à jour du profil :", err);
+    res.status(500).json({ error: "Erreur serveur", details: err.message });
+  }
+});
+
+// POST pour mettre à jour la photo de profil d'un étudiant
+app.post("/etudiants/:id/photo", upload.single("photo"), async (req, res) => {
+  const etudiantId = req.params.id;
+
+  if (!req.file) {
+    return res.status(400).json({ error: "Aucun fichier n'a été envoyé." });
+  }
+
+  const imagePath = `/uploads/${req.file.filename}`;
+  console.log(`🖼️ Mise à jour de la photo pour l'étudiant ID: ${etudiantId}. Nouveau chemin: ${imagePath}`);
+
+  try {
+    // Mettre à jour le chemin de l'image dans la base de données
+    const [result] = await pool.query(
+      "UPDATE etudiant SET Image = ? WHERE Immatricule = ?",
+      [imagePath, etudiantId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Étudiant non trouvé." });
+    }
+
+    // Renvoyer le chemin de la nouvelle image pour que le frontend puisse l'utiliser
+    res.json({
+      message: "Photo de profil mise à jour avec succès",
+      imagePath: imagePath
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la mise à jour de la photo :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la mise à jour de la photo.", details: err.message });
   }
 });
 
