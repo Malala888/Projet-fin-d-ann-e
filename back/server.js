@@ -638,16 +638,49 @@ app.get("/livrables/:id/download", async (req, res) => {
 
 // ------------------- CALENDRIER -------------------
 app.get("/etudiants/:id/calendrier", async (req, res) => {
+  const etudiantId = req.params.id;
   try {
-    const [rows] = await pool.query(
-      `SELECT P.Date_deb AS date, P.Theme AS title, 'Projet' AS type FROM projet P WHERE P.Id_etudiant=?
-       UNION
-       SELECT L.Date_soumission AS date, L.Nom AS title, 'Livrable' AS type FROM livrable L WHERE L.Id_etudiant=?`,
-      [req.params.id, req.params.id]
+    // Étape 1: Récupérer l'ID de l'équipe de l'étudiant
+    const [etudiantRows] = await pool.query(
+      "SELECT Id_equipe FROM etudiant WHERE Immatricule = ?",
+      [etudiantId]
     );
+    const equipeId = etudiantRows.length > 0 ? etudiantRows[0].Id_equipe : null;
+
+    // Étape 2: Construire la requête améliorée
+    const [rows] = await pool.query(
+      `
+      -- Récupérer les DATES DE FIN des projets liés à l'étudiant ou à son équipe
+      SELECT
+        P.Date_fin AS date,      -- Utilise la date de fin comme échéance
+        P.Theme AS title,
+        'Projet' AS type
+      FROM projet P
+      WHERE
+        P.Id_etudiant = ? OR (P.Id_equipe IS NOT NULL AND P.Id_equipe = ?)
+
+      UNION
+
+      -- Récupérer les DATES DE SOUMISSION des livrables liés à TOUS les projets de l'étudiant/équipe
+      SELECT
+        L.Date_soumission AS date,
+        L.Nom AS title,
+        'Livrable' AS type
+      FROM livrable L
+      WHERE L.Id_projet IN (
+        -- Sous-requête pour trouver tous les projets pertinents
+        SELECT Id_projet FROM projet
+        WHERE Id_etudiant = ? OR (Id_equipe IS NOT NULL AND Id_equipe = ?)
+      )
+      `,
+      [etudiantId, equipeId, etudiantId, equipeId] // Les paramètres sont passés pour chaque '?'
+    );
+    console.log(`📅 Événements trouvés pour l'étudiant ${etudiantId} (équipe ${equipeId || 'N/A'}): ${rows.length}`);
     res.json(rows);
+
   } catch (err) {
-    res.status(500).json({ error: "Erreur calendrier" });
+    console.error("❌ Erreur lors de la récupération du calendrier :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la récupération du calendrier" });
   }
 });
 
