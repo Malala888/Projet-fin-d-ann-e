@@ -12,6 +12,10 @@ const Dashboard = () => {
   const [etudiant, setEtudiant] = useState(null);
   const [projets, setProjets] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false); // Ajout de l'état pour la sidebar
+  const [statistiques, setStatistiques] = useState(null);
+  const [livrables, setLivrables] = useState([]);
+  const [calendrier, setCalendrier] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const chartsRef = useRef({});
 
@@ -32,6 +36,7 @@ const Dashboard = () => {
       const userData = JSON.parse(storedUser);
       setEtudiant(userData);
 
+      // Récupération des projets
       axios
         .get(`http://localhost:5000/etudiants/${userData.Immatricule}/projets`)
         .then((response) => {
@@ -39,6 +44,38 @@ const Dashboard = () => {
         })
         .catch((error) => {
           console.error("Erreur lors de la récupération des projets :", error);
+        });
+
+      // Récupération des statistiques
+      axios
+        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/statistiques`)
+        .then((response) => {
+          setStatistiques(response.data);
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération des statistiques :", error);
+        });
+
+      // Récupération des livrables
+      axios
+        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/livrables`)
+        .then((response) => {
+          setLivrables(response.data);
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération des livrables :", error);
+        });
+
+      // Récupération du calendrier
+      axios
+        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/calendrier`)
+        .then((response) => {
+          setCalendrier(response.data);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error("Erreur lors de la récupération du calendrier :", error);
+          setLoading(false);
         });
     } catch (error) {
       console.error("Erreur de parsing des données utilisateur :", error);
@@ -71,11 +108,14 @@ const Dashboard = () => {
         const progressChart = new Chart(progressCtx, {
           type: "line",
           data: {
-            labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+            labels: projets.length > 0 ? projets.slice(0, 6).map(p => {
+              const date = new Date(p.Date_deb);
+              return date.toLocaleDateString('fr-FR', { month: 'short' });
+            }) : ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
             datasets: [
               {
                 label: "Progression (%)",
-                data: [10, 25, 35, 45, 60, 65],
+                data: projets.length > 0 ? projets.slice(0, 6).map(p => p.Avancement || 0) : [0, 0, 0, 0, 0, 0],
                 borderColor: "rgb(59, 130, 246)",
                 backgroundColor: "rgba(59, 130, 246, 0.1)",
                 fill: true,
@@ -104,17 +144,20 @@ const Dashboard = () => {
         const gradesChart = new Chart(gradesCtx, {
           type: "bar",
           data: {
-            labels: [
-              "Rapport 1",
-              "Maquettes",
-              "Code source",
-              "Présentation",
-              "Rapport final",
-            ],
+            labels: livrables && livrables.length > 0 ?
+              livrables.slice(0, 5).map(l => l.Titre || l.Nom || 'Livrable') :
+              ["Rapport 1", "Maquettes", "Code source", "Présentation", "Rapport final"],
             datasets: [
               {
                 label: "Notes /20",
-                data: [14, 18, 16, 15, 16],
+                data: livrables && livrables.length > 0 ?
+                  livrables.slice(0, 5).map(l => {
+                    if (l.Status && l.Status.includes('/20')) {
+                      const match = l.Status.match(/(\d+(?:\.\d+)?)\/20/);
+                      return match ? parseFloat(match[1]) : 0;
+                    }
+                    return 0;
+                  }) : [0, 0, 0, 0, 0],
                 backgroundColor: [
                   "rgba(59, 130, 246, 0.7)",
                   "rgba(16, 185, 129, 0.7)",
@@ -343,7 +386,9 @@ const Dashboard = () => {
                   <p className="text-sm font-medium text-gray-500">
                     Livrables validés
                   </p>
-                  <p className="text-2xl font-semibold text-gray-800">5</p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {statistiques ? statistiques.livrables_soumis || 0 : 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -356,7 +401,24 @@ const Dashboard = () => {
                   <p className="text-sm font-medium text-gray-500">
                     Prochain rendu
                   </p>
-                  <p className="text-2xl font-semibold text-gray-800">3j</p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {calendrier && calendrier.length > 0 ?
+                      (() => {
+                        const prochainLivrable = calendrier
+                          .filter(e => e.type === 'Livrable')
+                          .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
+                        if (prochainLivrable) {
+                          const today = new Date();
+                          const deadline = new Date(prochainLivrable.date);
+                          const diffTime = deadline - today;
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                          return diffDays > 0 ? `${diffDays}j` : 'Aujourd\'hui';
+                        }
+                        return 'N/A';
+                      })()
+                      : 'N/A'
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -369,7 +431,26 @@ const Dashboard = () => {
                   <p className="text-sm font-medium text-gray-500">
                     Moyenne générale
                   </p>
-                  <p className="text-2xl font-semibold text-gray-800">15.2/20</p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {livrables && livrables.length > 0 ?
+                      (() => {
+                        const livrablesAvecNotes = livrables.filter(l => l.Status && l.Status.includes('/20'));
+                        if (livrablesAvecNotes.length > 0) {
+                          const notes = livrablesAvecNotes.map(l => {
+                            const match = l.Status.match(/(\d+(?:\.\d+)?)\/20/);
+                            return match ? parseFloat(match[1]) : null;
+                          }).filter(n => n !== null);
+
+                          if (notes.length > 0) {
+                            const moyenne = notes.reduce((sum, note) => sum + note, 0) / notes.length;
+                            return `${moyenne.toFixed(1)}/20`;
+                          }
+                        }
+                        return 'N/A';
+                      })()
+                      : 'N/A'
+                    }
+                  </p>
                 </div>
               </div>
             </div>
@@ -392,11 +473,35 @@ const Dashboard = () => {
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-red-600">Rapport final</p>
-                        <p className="text-sm text-gray-500">Dans 3 jours</p>
+                        <p className="text-sm font-medium text-red-600">
+                          {calendrier && calendrier.length > 0 ?
+                            calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[0]?.title || 'Rapport final'
+                            : 'Rapport final'
+                          }
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {calendrier && calendrier.length > 0 ?
+                            (() => {
+                              const prochainLivrable = calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[0];
+                              if (prochainLivrable) {
+                                const today = new Date();
+                                const deadline = new Date(prochainLivrable.date);
+                                const diffTime = deadline - today;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                return diffDays > 0 ? `Dans ${diffDays} jours` : 'Aujourd\'hui';
+                              }
+                              return 'Dans 3 jours';
+                            })()
+                            : 'Dans 3 jours'
+                          }
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500">Projet: Système de gestion académique</p>
-                      <p className="text-sm text-gray-500">Enseignant: John Doe</p>
+                      <p className="text-sm text-gray-500">
+                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Système de gestion académique' : 'Système de gestion académique'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'}
+                      </p>
                     </div>
                   </div>
                   <div className="px-4 py-3 flex items-center hover:bg-gray-50">
@@ -405,11 +510,35 @@ const Dashboard = () => {
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-yellow-600">Présentation</p>
-                        <p className="text-sm text-gray-500">Dans 1 semaine</p>
+                        <p className="text-sm font-medium text-yellow-600">
+                          {calendrier && calendrier.length > 0 ?
+                            calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[1]?.title || 'Présentation'
+                            : 'Présentation'
+                          }
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {calendrier && calendrier.length > 0 ?
+                            (() => {
+                              const livrables = calendrier.filter(e => e.type === 'Livrable').slice(0, 3);
+                              if (livrables[1]) {
+                                const today = new Date();
+                                const deadline = new Date(livrables[1].date);
+                                const diffTime = deadline - today;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                return diffDays > 0 ? `Dans ${diffDays} jours` : 'Aujourd\'hui';
+                              }
+                              return 'Dans 1 semaine';
+                            })()
+                            : 'Dans 1 semaine'
+                          }
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500">Projet: Système de gestion académique</p>
-                      <p className="text-sm text-gray-500">Enseignant: John Doe</p>
+                      <p className="text-sm text-gray-500">
+                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Système de gestion académique' : 'Système de gestion académique'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'}
+                      </p>
                     </div>
                   </div>
                   <div className="px-4 py-3 flex items-center hover:bg-gray-50">
@@ -418,11 +547,38 @@ const Dashboard = () => {
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-blue-600">Réunion de suivi</p>
-                        <p className="text-sm text-gray-500">Demain - 10:00</p>
+                        <p className="text-sm font-medium text-blue-600">
+                          {calendrier && calendrier.length > 0 ?
+                            calendrier.filter(e => e.type === 'Projet').slice(0, 3)[0]?.title || 'Réunion de suivi'
+                            : 'Réunion de suivi'
+                          }
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {calendrier && calendrier.length > 0 ?
+                            (() => {
+                              const projetsEcheance = calendrier.filter(e => e.type === 'Projet').slice(0, 3);
+                              if (projetsEcheance[0]) {
+                                const today = new Date();
+                                const deadline = new Date(projetsEcheance[0].date);
+                                const diffTime = deadline - today;
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                if (diffDays === 1) return 'Demain';
+                                else if (diffDays === 0) return 'Aujourd\'hui';
+                                else if (diffDays > 0) return `Dans ${diffDays} jours`;
+                                else return 'En retard';
+                              }
+                              return 'Demain - 10:00';
+                            })()
+                            : 'Demain - 10:00'
+                          }
+                        </p>
                       </div>
-                      <p className="text-sm text-gray-500">Projet: Plateforme e-learning</p>
-                      <p className="text-sm text-gray-500">Enseignant: Sophie Martin</p>
+                      <p className="text-sm text-gray-500">
+                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Plateforme e-learning' : 'Plateforme e-learning'}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'Sophie Martin' : 'Sophie Martin'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -446,23 +602,77 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
-                        <p className="ml-2 text-sm font-medium text-gray-900">Rapport intermédiaire</p>
+                        <p className="ml-2 text-sm font-medium text-gray-900">
+                          {livrables && livrables.length > 0 ?
+                            (livrables[0]?.Titre || livrables[0]?.Nom || 'Rapport intermédiaire')
+                            : 'Rapport intermédiaire'
+                          }
+                        </p>
                       </div>
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">16/20</span>
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        {livrables && livrables.length > 0 ?
+                          (() => {
+                            const status = livrables[0]?.Status;
+                            if (status && status.includes('/20')) {
+                              const match = status.match(/(\d+(?:\.\d+)?)\/20/);
+                              return match ? `${match[1]}/20` : 'N/A';
+                            }
+                            return 'N/A';
+                          })()
+                          : '16/20'
+                        }
+                      </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">"Bon travail, mais approfondir la partie méthodologie"</p>
-                    <p className="mt-1 text-xs text-gray-400">John Doe - 15/05/2023</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {livrables && livrables.length > 0 ?
+                        (livrables[0]?.Status && !livrables[0]?.Status.includes('/20') ?
+                          livrables[0]?.Status :
+                          "Bon travail, mais approfondir la partie méthodologie"
+                        )
+                        : "Bon travail, mais approfondir la partie méthodologie"
+                      }
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'} - {livrables && livrables.length > 0 ? new Date(livrables[0]?.Date_soumission).toLocaleDateString('fr-FR') : '15/05/2023'}
+                    </p>
                   </div>
                   <div className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
-                        <p className="ml-2 text-sm font-medium text-gray-900">Maquettes UI</p>
+                        <p className="ml-2 text-sm font-medium text-gray-900">
+                          {livrables && livrables.length > 1 ?
+                            (livrables[1]?.Titre || livrables[1]?.Nom || 'Maquettes UI')
+                            : 'Maquettes UI'
+                          }
+                        </p>
                       </div>
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">18/20</span>
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        {livrables && livrables.length > 1 ?
+                          (() => {
+                            const status = livrables[1]?.Status;
+                            if (status && status.includes('/20')) {
+                              const match = status.match(/(\d+(?:\.\d+)?)\/20/);
+                              return match ? `${match[1]}/20` : 'N/A';
+                            }
+                            return 'N/A';
+                          })()
+                          : '18/20'
+                        }
+                      </span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">"Excellente ergonomie, poursuivre dans cette direction"</p>
-                    <p className="mt-1 text-xs text-gray-400">Sophie Martin - 10/05/2023</p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {livrables && livrables.length > 1 ?
+                        (livrables[1]?.Status && !livrables[1]?.Status.includes('/20') ?
+                          livrables[1]?.Status :
+                          "Excellente ergonomie, poursuivre dans cette direction"
+                        )
+                        : "Excellente ergonomie, poursuivre dans cette direction"
+                      }
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'Sophie Martin' : 'Sophie Martin'} - {livrables && livrables.length > 1 ? new Date(livrables[1]?.Date_soumission).toLocaleDateString('fr-FR') : '10/05/2023'}
+                    </p>
                   </div>
                 </div>
                 <div className="px-4 py-3 bg-gray-50 text-right">
@@ -481,7 +691,7 @@ const Dashboard = () => {
                 <h2 className="text-lg font-medium text-gray-900">
                   Mes projets
                 </h2>
-                <Link to="/mes_projets" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                <Link to="/mes_projet" className="text-sm font-medium text-blue-600 hover:text-blue-500">
                   Voir tous
                 </Link>
               </div>
