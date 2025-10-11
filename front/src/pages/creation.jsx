@@ -2,12 +2,86 @@ import React, { useEffect, useState } from "react";
 
 function Register() {
   const [role, setRole] = useState(""); // rôle choisi
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState(""); // "success" ou "error"
 
   useEffect(() => {
     if (window.feather) {
       window.feather.replace();
     }
   }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage("");
+
+    // Récupérer les valeurs du formulaire
+    const formData = new FormData(e.target);
+    const matricule = formData.get('matricule');
+    const nom = formData.get('nom');
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirmPassword');
+    const filiere = formData.get('filiere');
+    const parcours = formData.get('parcours');
+    const niveau = formData.get('niveau');
+    const titre = formData.get('titre');
+
+    // Validation côté client
+    if (password !== confirmPassword) {
+      setMessage("Les mots de passe ne correspondent pas");
+      setMessageType("error");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!role) {
+      setMessage("Veuillez choisir un rôle");
+      setMessageType("error");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          matricule: parseInt(matricule),
+          nom,
+          email,
+          password,
+          confirmPassword,
+          role,
+          ...(role === 'etudiant' && { filiere, parcours, niveau }),
+          ...(role === 'encadreur' && { titre })
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage("Compte créé avec succès ! Vous pouvez maintenant vous connecter.");
+        setMessageType("success");
+        // Réinitialiser le formulaire
+        e.target.reset();
+        setRole("");
+      } else {
+        setMessage(data.error || "Erreur lors de la création du compte");
+        setMessageType("error");
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+      setMessage("Erreur de connexion au serveur");
+      setMessageType("error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center register-bg">
@@ -38,7 +112,7 @@ function Register() {
           </p>
         </div>
 
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           {/* Matricule */}
           <div>
             <label htmlFor="matricule" className="block text-sm font-medium text-gray-700">
@@ -189,13 +263,31 @@ function Register() {
             </div>
           )}
 
+          {/* Message d'erreur ou de succès */}
+          {message && (
+            <div className={`p-4 rounded-md ${messageType === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              <div className="flex">
+                <i data-feather={messageType === 'success' ? 'check-circle' : 'alert-circle'} className="h-5 w-5 mr-2"></i>
+                <span>{message}</span>
+              </div>
+            </div>
+          )}
+
           {/* Bouton */}
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+              disabled={isLoading}
+              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} focus:outline-none`}
             >
-              Créer mon compte
+              {isLoading ? (
+                <>
+                  <i data-feather="loader" className="animate-spin h-4 w-4 mr-2"></i>
+                  Création en cours...
+                </>
+              ) : (
+                'Créer mon compte'
+              )}
             </button>
           </div>
         </form>

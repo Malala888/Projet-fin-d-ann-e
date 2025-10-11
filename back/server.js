@@ -117,6 +117,98 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// ------------------- ROUTE REGISTER -------------------
+app.post("/register", async (req, res) => {
+  const { matricule, nom, email, password, confirmPassword, role, filiere, parcours, niveau, titre } = req.body;
+
+  console.log("📝 Tentative d'inscription:", { matricule, nom, email, role });
+
+  // Validation des champs requis
+  if (!matricule || !nom || !email || !password || !confirmPassword || !role) {
+    return res.status(400).json({ error: "Tous les champs sont requis" });
+  }
+
+  // Validation du mot de passe
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: "Les mots de passe ne correspondent pas" });
+  }
+
+  // Validation du rôle
+  if (!["etudiant", "encadreur"].includes(role)) {
+    return res.status(400).json({ error: "Rôle invalide" });
+  }
+
+  // Validation de l'email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Format d'email invalide" });
+  }
+
+  try {
+    // Vérifier si l'email existe déjà
+    const [existingUsers] = await pool.query(
+      `SELECT Email FROM ${role} WHERE Email = ?`,
+      [email]
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(409).json({ error: "Cet email est déjà utilisé" });
+    }
+
+    let insertQuery, values;
+
+    if (role === "etudiant") {
+      // Validation des champs spécifiques à l'étudiant
+      if (!filiere || !parcours || !niveau) {
+        return res.status(400).json({ error: "Tous les champs étudiant sont requis" });
+      }
+
+      insertQuery = `
+        INSERT INTO etudiant (Immatricule, Nom, Email, Mot_de_passe, Filiere, Parcours, Niveau)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      values = [matricule, nom, email, password, filiere, parcours, niveau];
+
+    } else if (role === "encadreur") {
+      // Validation du champ spécifique à l'encadreur
+      if (!titre) {
+        return res.status(400).json({ error: "Le titre est requis pour l'encadreur" });
+      }
+
+      insertQuery = `
+        INSERT INTO encadreur (Matricule, Nom, Email, Mot_de_passe, Titre)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      values = [matricule, nom, email, password, titre];
+    }
+
+    const [result] = await pool.query(insertQuery, values);
+
+    console.log(`✅ ${role} créé avec succès. ID:`, result.insertId);
+
+    res.status(201).json({
+      message: "Compte créé avec succès",
+      role: role,
+      id: result.insertId
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la création du compte:", err);
+
+    // Gestion des erreurs spécifiques à MySQL
+    if (err.code === 'ER_DUP_ENTRY') {
+      if (err.message.includes('Email')) {
+        return res.status(409).json({ error: "Cet email est déjà utilisé" });
+      }
+      if (err.message.includes('Immatricule') || err.message.includes('Matricule')) {
+        return res.status(409).json({ error: "Ce matricule est déjà utilisé" });
+      }
+    }
+
+    res.status(500).json({ error: "Erreur serveur lors de la création du compte" });
+  }
+});
+
 // ------------------- ROUTES ETUDIANTS & ENCADREURS -------------------
 app.get("/etudiants", async (req, res) => {
   try {
