@@ -13,9 +13,10 @@ const ParametreEtudiant = () => {
         Email: "",
         Mot_de_passe: "",
         Filiere: "",
-        Parcours: ""
+        Parcours: "",
+        Niveau: ""
     });
-    const [newPhoto, setNewPhoto] = useState(null); // Pour stocker le nouveau fichier photo
+    const [newPhoto, setNewPhoto] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
@@ -34,17 +35,21 @@ const ParametreEtudiant = () => {
         try {
             const userData = JSON.parse(storedUser);
             setEtudiant(userData);
-            // Initialiser le formulaire avec toutes les données modifiables
+
+            // Initialiser le formulaire avec les données
             setFormData({
                 Nom: userData.Nom || "",
                 Email: userData.Email || "",
                 Mot_de_passe: userData.Mot_de_passe || "",
                 Filiere: userData.Filiere || "",
-                Parcours: userData.Parcours || ""
+                Parcours: userData.Parcours || "",
+                Niveau: userData.Niveau || ""
             });
+
             setLoading(false);
+            console.log("✅ Données utilisateur chargées:", userData);
         } catch (error) {
-            console.error("Erreur de parsing des données utilisateur :", error);
+            console.error("❌ Erreur de chargement:", error);
             localStorage.clear();
             navigate("/login");
         }
@@ -62,6 +67,7 @@ const ParametreEtudiant = () => {
     const handleChange = (e) => {
         const { id, value } = e.target;
         setFormData((prev) => ({ ...prev, [id]: value }));
+        console.log(`📝 Champ ${id} modifié:`, value);
     };
 
     const handlePhotoChange = (e) => {
@@ -74,45 +80,35 @@ const ParametreEtudiant = () => {
         e.preventDefault();
         if (!etudiant) return;
 
+        console.log("🚀 Soumission du formulaire avec les données:", formData);
+
         try {
-            // Étape 1: Mettre à jour les informations textuelles
-            const textResponse = await axios.put(`http://localhost:5000/etudiants/${etudiant.Immatricule}`, formData);
-            let updatedUser = textResponse.data.user;
+            const response = await axios.put(`http://localhost:5000/etudiants/${etudiant.Immatricule}`, formData);
+            console.log("✅ Réponse du serveur:", response.data);
 
-            // Étape 2: Si une nouvelle photo a été sélectionnée, l'envoyer
-            if (newPhoto) {
-                const photoFormData = new FormData();
-                photoFormData.append("photo", newPhoto);
-
-                const photoResponse = await axios.post(`http://localhost:5000/etudiants/${etudiant.Immatricule}/photo`, photoFormData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-
-                // Mettre à jour le chemin de l'image dans notre objet utilisateur
-                updatedUser.Image = photoResponse.data.imagePath;
-            }
-
-            // Mettre à jour le state et le localStorage avec toutes les nouvelles infos
+            // Mettre à jour les données locales
+            const updatedUser = response.data.user;
             setEtudiant(updatedUser);
             localStorage.setItem("user", JSON.stringify(updatedUser));
 
-            alert("Profil mis à jour avec succès !");
+            alert("✅ Profil mis à jour avec succès !");
+            window.location.reload();
 
         } catch (error) {
-            console.error("Erreur lors de la mise à jour du profil :", error.response ? error.response.data : error.message);
-            alert("Une erreur est survenue lors de la mise à jour.");
+            console.error("❌ Erreur lors de la mise à jour:", error.response ? error.response.data : error.message);
+            alert("❌ Une erreur est survenue lors de la mise à jour.");
         }
     };
 
     if (loading || !etudiant) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <p className="text-xl text-gray-700">Chargement...</p>
+                <p className="text-xl text-gray-700">🔄 Chargement...</p>
             </div>
         );
     }
 
-    // Construire l'URL de l'image, en s'assurant qu'elle est complète
+    // Construire l'URL de l'image
     const profileImageUrl = etudiant.Image && !etudiant.Image.startsWith('http')
         ? `http://localhost:5000${etudiant.Image}`
         : etudiant.Image || "http://static.photos/people/200x200/2";
@@ -236,14 +232,25 @@ const ParametreEtudiant = () => {
                                 <input id="Mot_de_passe" type="password" value={formData.Mot_de_passe} onChange={handleChange} placeholder="Laissez vide pour ne pas changer" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"/>
                             </div>
 
-                            {/* Nouveaux champs pour Filiere et Parcours */}
+                            {/* Nouveaux champs pour Filiere, Parcours et Niveau */}
                             <div>
                                 <label htmlFor="Filiere" className="block text-sm font-medium text-gray-700">Filière</label>
-                                <input id="Filiere" type="text" value={formData.Filiere} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"/>
+                                <input id="Filiere" type="text" value={formData.Filiere} onChange={handleChange} placeholder="Ex: Informatique" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"/>
                             </div>
                              <div>
                                 <label htmlFor="Parcours" className="block text-sm font-medium text-gray-700">Parcours</label>
-                                <input id="Parcours" type="text" value={formData.Parcours} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"/>
+                                <input id="Parcours" type="text" value={formData.Parcours} onChange={handleChange} placeholder="Ex: IA, GL, Réseaux" className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"/>
+                            </div>
+                            <div>
+                                <label htmlFor="Niveau" className="block text-sm font-medium text-gray-700">Niveau</label>
+                                <select id="Niveau" value={formData.Niveau} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Sélectionner un niveau</option>
+                                    <option value="L1">Licence 1</option>
+                                    <option value="L2">Licence 2</option>
+                                    <option value="L3">Licence 3</option>
+                                    <option value="M1">Master 1</option>
+                                    <option value="M2">Master 2</option>
+                                </select>
                             </div>
 
                             <div>
@@ -257,52 +264,31 @@ const ParametreEtudiant = () => {
                             </div>
 
                             <button type="submit" className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                Enregistrer les modifications
+                                💾 Enregistrer les modifications
                             </button>
                         </form>
                     </section>
 
-                    {/* Préférences */}
-                    <section data-aos="fade-up" data-aos-delay="100" className="bg-white rounded-lg shadow-xl p-6 mb-8 border border-gray-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Préférences</h2>
-                        <form className="space-y-4">
-                            <div className="flex items-center">
-                                <input
-                                    id="notif"
-                                    type="checkbox"
-                                    defaultChecked
-                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                                />
-                                <label htmlFor="notif" className="ml-2 text-sm text-gray-700">Activer les notifications par email</label>
-                            </div>
-                            <div>
-                                <label htmlFor="theme" className="block text-sm font-medium text-gray-700">Thème de l'interface</label>
-                                <select
-                                    id="theme"
-                                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option>Clair</option>
-                                    <option>Sombre (bientôt disponible)</option>
-                                </select>
-                            </div>
-                            <button
-                                type="submit"
-                                className="px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            >
-                                Sauvegarder les préférences
-                            </button>
-                        </form>
-                    </section>
+                    {/* Debug info */}
+                    <section className="bg-white rounded-lg shadow-xl p-6 border border-gray-200">
+                        <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">🔍 Informations de debug</h2>
+                        <div className="space-y-2 text-sm text-gray-700">
+                            <p><strong>Nom:</strong> {etudiant.Nom}</p>
+                            <p><strong>Email:</strong> {etudiant.Email}</p>
+                            <p><strong>Filière:</strong> {etudiant.Filiere || 'Non définie'}</p>
+                            <p><strong>Parcours:</strong> {etudiant.Parcours || 'Non défini'}</p>
+                            <p><strong>Niveau:</strong> {etudiant.Niveau || 'Non défini'}</p>
+                            <p><strong>Immatricule:</strong> {etudiant.Immatricule}</p>
 
-                    {/* Infos académiques */}
-                    <section data-aos="fade-up" data-aos-delay="200" className="bg-white rounded-lg shadow-xl p-6 border border-gray-200">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Informations académiques</h2>
-                        <ul className="space-y-2 text-sm text-gray-700">
-                            <li><strong>Niveau :</strong> {etudiant.Niveau}</li>
-                            <li><strong>Filière :</strong> {etudiant.Filiere || "Non spécifiée"}</li>
-                            <li><strong>Parcours :</strong> {etudiant.Parcours || "Non spécifié"}</li>
-                            <li><strong>Année académique :</strong> 2024-2025</li>
-                        </ul>
+                            <details className="mt-4">
+                                <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
+                                    📋 Voir les données complètes (JSON)
+                                </summary>
+                                <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-auto">
+                                    {JSON.stringify(etudiant, null, 2)}
+                                </pre>
+                            </details>
+                        </div>
                     </section>
                 </main>
             </div>

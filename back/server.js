@@ -528,10 +528,10 @@ app.put("/equipes/:id", async (req, res) => {
 
 app.put("/etudiants/:id", async (req, res) => {
   const etudiantId = req.params.id;
-  const { Nom, Email, Mot_de_passe, Filiere, Parcours } = req.body;
+  const { Nom, Email, Mot_de_passe, Filiere, Parcours, Niveau } = req.body;
 
   console.log(`📝 Mise à jour du profil pour l'étudiant ID: ${etudiantId}`);
-  
+
   if (!Nom || !Email) {
     return res.status(400).json({ error: "Le nom et l'email sont requis." });
   }
@@ -546,10 +546,10 @@ app.put("/etudiants/:id", async (req, res) => {
       }
     }
 
-    // On met à jour la base de données
+    // On met à jour la base de données avec tous les champs
     await pool.query(
-      `UPDATE etudiant SET Nom = ?, Email = ?, Mot_de_passe = ?, Filiere = ?, Parcours = ? WHERE Immatricule = ?`,
-      [Nom, Email, finalPassword, Filiere || null, Parcours || null, etudiantId]
+      `UPDATE etudiant SET Nom = ?, Email = ?, Mot_de_passe = ?, Filiere = ?, Parcours = ?, Niveau = ? WHERE Immatricule = ?`,
+      [Nom, Email, finalPassword, Filiere || null, Parcours || null, Niveau || null, etudiantId]
     );
 
     // On récupère l'utilisateur complet pour le renvoyer et mettre à jour l'interface
