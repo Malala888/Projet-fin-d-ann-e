@@ -8,9 +8,9 @@ import ModalAjoutLivrable from "./ModalAjoutLivrable";
 import ModalModifierLivrable from "./ModalModifierLivrable";
 
 // CONFIGURATION AXIOS POUR DÉSACTIVER LE CACHE
-axios.defaults.headers.get['Cache-Control'] = 'no-cache';
-axios.defaults.headers.get['Pragma'] = 'no-cache';
-axios.defaults.headers.get['Expires'] = '0';
+axios.defaults.headers.get["Cache-Control"] = "no-cache";
+axios.defaults.headers.get["Pragma"] = "no-cache";
+axios.defaults.headers.get["Expires"] = "0";
 
 const normalizeStatus = (status) => {
   if (!status) return "";
@@ -48,7 +48,11 @@ const MesLivrables = () => {
   const getStatusClasses = (category) => {
     const normalized = normalizeStatus(category);
 
-    if (normalized === "validé" || normalized === "contient fichier" || normalized === "valide") {
+    if (
+      normalized === "validé" ||
+      normalized === "contient fichier" ||
+      normalized === "valide"
+    ) {
       return {
         statusColor: "bg-green-100 text-green-800",
         label: "Validé",
@@ -119,7 +123,11 @@ const MesLivrables = () => {
 
       return {
         ...liv,
-        title: liv.Titre || liv.Titre_livrable || liv.Nom || `Livrable #${liv.Id_livrable}`,
+        title:
+          liv.Titre ||
+          liv.Titre_livrable ||
+          liv.Nom ||
+          `Livrable #${liv.Id_livrable}`,
         project: liv.Nom_projet || liv.Projet || "Projet Inconnu",
         date: liv.Date_soumission
           ? (() => {
@@ -130,8 +138,10 @@ const MesLivrables = () => {
                 // Utiliser la même logique que projetDetail.jsx pour la cohérence
                 const dateObj = new Date(liv.Date_soumission);
                 if (!isNaN(dateObj.getTime())) {
-                  const formattedDate = dateObj.toLocaleDateString('fr-FR');
-                  console.log(`  Date formatée (toLocaleDateString): ${formattedDate}`);
+                  const formattedDate = dateObj.toLocaleDateString("fr-FR");
+                  console.log(
+                    `  Date formatée (toLocaleDateString): ${formattedDate}`
+                  );
                   console.log(`  Date ISO: ${dateObj.toISOString()}`);
                   return formattedDate;
                 }
@@ -139,7 +149,12 @@ const MesLivrables = () => {
                 console.log(`  ❌ Date invalide après parsing`);
                 return "Date invalide";
               } catch (error) {
-                console.error("❌ Erreur formatage date:", error, "pour:", liv.Date_soumission);
+                console.error(
+                  "❌ Erreur formatage date:",
+                  error,
+                  "pour:",
+                  liv.Date_soumission
+                );
                 return "Erreur date";
               }
             })()
@@ -201,13 +216,15 @@ const MesLivrables = () => {
     try {
       console.log(`Debut téléchargement livrable ${livrableId}`);
 
-      const response = await fetch(`http://localhost:5000/livrables/${livrableId}/download`);
+      const response = await fetch(
+        `http://localhost:5000/livrables/${livrableId}/download`
+      );
 
       if (!response.ok) {
         throw new Error(`Erreur HTTP: ${response.status}`);
       }
 
-      const contentDisposition = response.headers.get('Content-Disposition');
+      const contentDisposition = response.headers.get("Content-Disposition");
       let filename = titre || `livrable_${livrableId}`;
 
       if (contentDisposition) {
@@ -219,10 +236,10 @@ const MesLivrables = () => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
       link.download = filename;
-      link.style.display = 'none';
+      link.style.display = "none";
 
       document.body.appendChild(link);
       link.click();
@@ -231,8 +248,8 @@ const MesLivrables = () => {
 
       console.log(`Téléchargement réussi: ${filename}`);
     } catch (error) {
-      console.error('Erreur lors du téléchargement :', error);
-      alert('Erreur lors du téléchargement du fichier. Veuillez réessayer.');
+      console.error("Erreur lors du téléchargement :", error);
+      alert("Erreur lors du téléchargement du fichier. Veuillez réessayer.");
     }
   };
 
@@ -285,7 +302,7 @@ const MesLivrables = () => {
         console.log(`  ${pair[0]}: ${pair[1]}`);
 
         // Logging spécial pour la date
-        if (pair[0] === 'Date_soumission') {
+        if (pair[0] === "Date_soumission") {
           console.log(`  📅 DATE SOUMISSION DÉTAILLÉE:`);
           console.log(`    Valeur reçue: ${pair[1]}`);
           console.log(`    Type: ${typeof pair[1]}`);
@@ -294,7 +311,9 @@ const MesLivrables = () => {
           try {
             const dateObj = new Date(pair[1]);
             console.log(`    Date parsée: ${dateObj.toISOString()}`);
-            console.log(`    Date locale: ${dateObj.toLocaleDateString('fr-FR')}`);
+            console.log(
+              `    Date locale: ${dateObj.toLocaleDateString("fr-FR")}`
+            );
           } catch (dateError) {
             console.error(`    ❌ Erreur parsing date:`, dateError);
           }
@@ -329,7 +348,7 @@ const MesLivrables = () => {
       console.log("🔄 Timestamp unique:", newTimestamp);
 
       // 2. Incrémenter la clé de refresh pour forcer le re-render
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
 
       // 3. Recharger les données de manière agressive
       setTimeout(async () => {
@@ -344,16 +363,16 @@ const MesLivrables = () => {
           await fetchData();
         }, 1000);
       }, 300);
-
     } catch (error) {
       console.error("❌ === ERREUR MODIFICATION ===");
       console.error("Erreur complète:", error);
       console.error("Réponse du serveur:", error.response?.data);
 
-      const errorMessage = error.response?.data?.error
-        || error.response?.data?.details
-        || error.message
-        || "Erreur inconnue";
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        "Erreur inconnue";
 
       alert("Erreur lors de la modification : " + errorMessage);
     }
@@ -362,15 +381,22 @@ const MesLivrables = () => {
   const fetchData = useCallback(async () => {
     if (!etudiant) return;
     try {
-      console.log("🔄 Récupération des données pour l'étudiant:", etudiant.Immatricule);
+      console.log(
+        "🔄 Récupération des données pour l'étudiant:",
+        etudiant.Immatricule
+      );
 
       // AJOUTER UN TIMESTAMP POUR ÉVITER LE CACHE
       const timestamp = new Date().getTime();
       console.log("🕒 Timestamp généré:", timestamp);
 
       const [livrablesResponse, projetsResponse] = await Promise.all([
-        axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/livrables?_=${timestamp}`),
-        axios.get(`http://localhost:5000/etudiants/${etudiant.Immatricule}/projets?_=${timestamp}`),
+        axios.get(
+          `http://localhost:5000/etudiants/${etudiant.Immatricule}/livrables?_=${timestamp}`
+        ),
+        axios.get(
+          `http://localhost:5000/etudiants/${etudiant.Immatricule}/projets?_=${timestamp}`
+        ),
       ]);
 
       console.log("📦 DONNÉES BRUTES REÇUES:");
@@ -380,14 +406,22 @@ const MesLivrables = () => {
       // Vérifier si les données ont changé
       console.log("🔍 VÉRIFICATION DES DATES:");
       livrablesResponse.data.forEach((liv, index) => {
-        console.log(`Livrable ${index + 1}: ID=${liv.Id_livrable}, Date=${liv.Date_soumission}, Titre=${liv.Titre}`);
+        console.log(
+          `Livrable ${index + 1}: ID=${liv.Id_livrable}, Date=${
+            liv.Date_soumission
+          }, Titre=${liv.Titre}`
+        );
       });
 
       const formattedLivrables = formatLivrables(livrablesResponse.data);
       console.log("📋 DONNÉES FORMATÉES:");
       console.log("Nombre après formatage:", formattedLivrables.length);
       formattedLivrables.forEach((liv, index) => {
-        console.log(`Formaté ${index + 1}: titre=${liv.title}, date=${liv.date}, projet=${liv.project}`);
+        console.log(
+          `Formaté ${index + 1}: titre=${liv.title}, date=${liv.date}, projet=${
+            liv.project
+          }`
+        );
       });
 
       setLivrables(formattedLivrables);
@@ -403,22 +437,24 @@ const MesLivrables = () => {
     }
   }, [etudiant, formatLivrables, calculateStats]);
 
-  const filteredLivrables = livrables.filter((livrable) => {
-    if (activeFilter === "Tous") return true;
-    const normalizedFilter = normalizeStatus(activeFilter);
-    return livrable.categories.some(
-      (cat) => normalizeStatus(cat) === normalizedFilter
-    );
-  }).filter((livrable) => {
-    if (searchQuery && searchQuery.length > 0) {
-      const q = normalizeStatus(searchQuery);
-      return (
-        normalizeStatus(livrable.title).includes(q) ||
-        normalizeStatus(livrable.project).includes(q)
+  const filteredLivrables = livrables
+    .filter((livrable) => {
+      if (activeFilter === "Tous") return true;
+      const normalizedFilter = normalizeStatus(activeFilter);
+      return livrable.categories.some(
+        (cat) => normalizeStatus(cat) === normalizedFilter
       );
-    }
-    return true;
-  });
+    })
+    .filter((livrable) => {
+      if (searchQuery && searchQuery.length > 0) {
+        const q = normalizeStatus(searchQuery);
+        return (
+          normalizeStatus(livrable.title).includes(q) ||
+          normalizeStatus(livrable.project).includes(q)
+        );
+      }
+      return true;
+    });
 
   // DEBUG: Afficher les données filtrées
   console.log("🔍 DONNÉES FILTRÉES:");
@@ -426,7 +462,9 @@ const MesLivrables = () => {
   console.log("Recherche:", searchQuery);
   console.log("Nombre de livrables affichés:", filteredLivrables.length);
   filteredLivrables.forEach((liv, index) => {
-    console.log(`Affiché ${index + 1}: ${liv.title} - ${liv.date} - ${liv.project}`);
+    console.log(
+      `Affiché ${index + 1}: ${liv.title} - ${liv.date} - ${liv.project}`
+    );
   });
 
   // FONCTION DE DIAGNOSTIC POUR VÉRIFIER LES DONNÉES
@@ -476,7 +514,10 @@ const MesLivrables = () => {
         try {
           const updatedUser = JSON.parse(e.newValue);
           setEtudiant(updatedUser);
-          console.log("🔄 Données utilisateur mises à jour dans livrables:", updatedUser);
+          console.log(
+            "🔄 Données utilisateur mises à jour dans livrables:",
+            updatedUser
+          );
         } catch (error) {
           console.error("❌ Erreur lors de la mise à jour des données:", error);
         }
@@ -487,7 +528,10 @@ const MesLivrables = () => {
     const handleUserUpdate = (e) => {
       const updatedUser = e.detail;
       setEtudiant(updatedUser);
-      console.log("🔄 Données utilisateur mises à jour via événement personnalisé:", updatedUser);
+      console.log(
+        "🔄 Données utilisateur mises à jour via événement personnalisé:",
+        updatedUser
+      );
     };
 
     window.addEventListener("storage", handleStorageChange);
@@ -510,9 +554,12 @@ const MesLivrables = () => {
   }
 
   // Construire l'URL de l'image avec cache busting
-  const profileImageUrl = etudiant?.Image && !etudiant.Image.startsWith('http')
-    ? `http://localhost:5000${etudiant.Image}${etudiant.Image.includes('?') ? '&' : '?'}t=${new Date().getTime()}`
-    : etudiant?.Image || "http://static.photos/people/200x200/2";
+  const profileImageUrl =
+    etudiant?.Image && !etudiant.Image.startsWith("http")
+      ? `http://localhost:5000${etudiant.Image}${
+          etudiant.Image.includes("?") ? "&" : "?"
+        }t=${new Date().getTime()}`
+      : etudiant?.Image || "http://static.photos/people/200x200/2";
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
@@ -556,12 +603,16 @@ const MesLivrables = () => {
                     onClick={handleLogout}
                     className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i> Déconnexion
+                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i>{" "}
+                    Déconnexion
                   </button>
                 </div>
               </div>
             </div>
-            <button onClick={handleLogout} className="md:hidden p-2 rounded text-white hover:bg-blue-600">
+            <button
+              onClick={handleLogout}
+              className="md:hidden p-2 rounded text-white hover:bg-blue-600"
+            >
               <i data-feather="log-out" className="h-6 w-6"></i>
             </button>
           </div>
@@ -570,8 +621,9 @@ const MesLivrables = () => {
 
       <div className="flex flex-1">
         <aside
-          className={`sidebar bg-white w-64 min-h-screen border-r ${sidebarOpen ? "" : "hidden"
-            } md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}
+          className={`sidebar bg-white w-64 min-h-screen border-r ${
+            sidebarOpen ? "" : "hidden"
+          } md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}
         >
           <div className="p-4 border-b flex items-center">
             <img
@@ -583,7 +635,9 @@ const MesLivrables = () => {
               <p className="text-sm font-medium text-gray-700">
                 {etudiant?.Nom}
               </p>
-              <p className="text-xs text-gray-500">Étudiant {etudiant?.Niveau}</p>
+              <p className="text-xs text-gray-500">
+                Étudiant {etudiant?.Niveau}
+              </p>
             </div>
           </div>
           <nav className="p-4 space-y-1">
@@ -591,44 +645,51 @@ const MesLivrables = () => {
               to="/dashboard"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
+              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de
+              bord
             </Link>
             <Link
               to="/mes_projet"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes projets
+              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes
+              projets
             </Link>
             <Link
               to="/mes_livrables"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700"
             >
-              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes livrables
+              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes
+              livrables
             </Link>
             <Link
               to="/calendrierEtudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="calendar" className="mr-3 h-5 w-5"></i> Calendrier
+              <i data-feather="calendar" className="mr-3 h-5 w-5"></i>{" "}
+              Calendrier
             </Link>
             <Link
               to="/statistique_etudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Mes statistiques
+              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Mes
+              statistiques
             </Link>
             <Link
               to="/parametre_etudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
+              <i data-feather="settings" className="mr-3 h-5 w-5"></i>{" "}
+              Paramètres
             </Link>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50"
+            <Link
+              to="/"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
-            </button>
+              <i data-feather="log-out" className="mr-3 h-5 w-5"></i>{" "}
+              Déconnexion
+            </Link>
           </nav>
         </aside>
 
@@ -639,26 +700,30 @@ const MesLivrables = () => {
               <button
                 onClick={() => {
                   console.log("🔄 RECHARGEMENT MANUEL DEMANDÉ");
-                  setRefreshKey(prev => prev + 1);
+                  setRefreshKey((prev) => prev + 1);
                   fetchData();
                 }}
                 className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-sm"
                 title="Recharger les données"
               >
-                <i data-feather="refresh-cw" className="mr-2 h-4 w-4"></i> Recharger
+                <i data-feather="refresh-cw" className="mr-2 h-4 w-4"></i>{" "}
+                Recharger
               </button>
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
               >
-                <i data-feather="plus" className="mr-2 h-4 w-4"></i> Nouveau livrable
+                <i data-feather="plus" className="mr-2 h-4 w-4"></i> Nouveau
+                livrable
               </button>
             </div>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow mb-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Filtrer :</span>
+              <span className="text-sm font-medium text-gray-700">
+                Filtrer :
+              </span>
               {filterButtons.map((filter) => (
                 <button
                   key={filter}
@@ -701,8 +766,12 @@ const MesLivrables = () => {
                     <i data-feather={stat.icon}></i>
                   </div>
                   <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">{stat.label}</p>
-                    <p className="text-2xl font-semibold text-gray-800">{stat.value}</p>
+                    <p className="text-sm font-medium text-gray-500">
+                      {stat.label}
+                    </p>
+                    <p className="text-2xl font-semibold text-gray-800">
+                      {stat.value}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -727,7 +796,10 @@ const MesLivrables = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-gray-100">
-                          <i data-feather="file-text" className="h-5 w-5 text-gray-600"></i>
+                          <i
+                            data-feather="file-text"
+                            className="h-5 w-5 text-gray-600"
+                          ></i>
                         </div>
                         <div className="ml-4">
                           <h3 className="text-sm font-medium text-gray-900">
@@ -752,7 +824,9 @@ const MesLivrables = () => {
                           })}
                         </div>
 
-                        <span className="text-sm text-gray-500">{liv.date}</span>
+                        <span className="text-sm text-gray-500">
+                          {liv.date}
+                        </span>
 
                         <div className="flex space-x-2">
                           <button
@@ -765,17 +839,25 @@ const MesLivrables = () => {
                           <button
                             className="p-1 text-red-600 hover:text-red-800"
                             title="Supprimer"
-                            onClick={() => handleDeleteLivrable(liv.Id_livrable)}
+                            onClick={() =>
+                              handleDeleteLivrable(liv.Id_livrable)
+                            }
                           >
                             <i data-feather="trash-2" className="h-4 w-4"></i>
                           </button>
-                          {(liv.categories.includes("Validé") || liv.hasFichier) && (
+                          {(liv.categories.includes("Validé") ||
+                            liv.hasFichier) && (
                             <button
                               className="p-1 text-blue-600 hover:text-blue-800"
                               title="Télécharger"
-                              onClick={() => handleDownloadFile(liv.Id_livrable, liv.title)}
+                              onClick={() =>
+                                handleDownloadFile(liv.Id_livrable, liv.title)
+                              }
                             >
-                              <i data-feather="download" className="h-4 w-4"></i>
+                              <i
+                                data-feather="download"
+                                className="h-4 w-4"
+                              ></i>
                             </button>
                           )}
                         </div>

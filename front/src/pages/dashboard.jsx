@@ -11,7 +11,7 @@ import feather from "feather-icons";
 const Dashboard = () => {
   const [etudiant, setEtudiant] = useState(null);
   const [projets, setProjets] = useState([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Ajout de l'état pour la sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [statistiques, setStatistiques] = useState(null);
   const [livrables, setLivrables] = useState([]);
   const [calendrier, setCalendrier] = useState([]);
@@ -19,7 +19,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const chartsRef = useRef({});
 
-  // ... (La logique useEffect pour récupérer les données reste identique)
+  // Récupération des données au montage du composant
   useEffect(() => {
     feather.replace();
     AOS.init({ duration: 800, once: true });
@@ -36,45 +36,28 @@ const Dashboard = () => {
       const userData = JSON.parse(storedUser);
       setEtudiant(userData);
 
-      // Récupération des projets
-      axios
-        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/projets`)
-        .then((response) => {
-          setProjets(response.data);
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la récupération des projets :", error);
-        });
+      const immatricule = userData.Immatricule;
+      const requests = [
+        axios.get(`http://localhost:5000/etudiants/${immatricule}/projets`),
+        axios.get(
+          `http://localhost:5000/etudiants/${immatricule}/statistiques`
+        ),
+        axios.get(`http://localhost:5000/etudiants/${immatricule}/livrables`),
+        axios.get(`http://localhost:5000/etudiants/${immatricule}/calendrier`),
+      ];
 
-      // Récupération des statistiques
-      axios
-        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/statistiques`)
-        .then((response) => {
-          setStatistiques(response.data);
+      // Utilisation de Promise.all pour gérer toutes les requêtes en parallèle
+      Promise.all(requests)
+        .then(([projetsRes, statsRes, livrablesRes, calendrierRes]) => {
+          setProjets(projetsRes.data);
+          setStatistiques(statsRes.data);
+          setLivrables(livrablesRes.data);
+          setCalendrier(calendrierRes.data);
         })
         .catch((error) => {
-          console.error("Erreur lors de la récupération des statistiques :", error);
-        });
-
-      // Récupération des livrables
-      axios
-        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/livrables`)
-        .then((response) => {
-          setLivrables(response.data);
+          console.error("Erreur lors de la récupération des données :", error);
         })
-        .catch((error) => {
-          console.error("Erreur lors de la récupération des livrables :", error);
-        });
-
-      // Récupération du calendrier
-      axios
-        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/calendrier`)
-        .then((response) => {
-          setCalendrier(response.data);
-          setLoading(false);
-        })
-        .catch((error) => {
-          console.error("Erreur lors de la récupération du calendrier :", error);
+        .finally(() => {
           setLoading(false);
         });
     } catch (error) {
@@ -83,39 +66,44 @@ const Dashboard = () => {
       navigate("/login");
     }
   }, [navigate]);
-  
-  // Remplacement de l'icône à chaque mise à jour
+
+  // Remplacement des icônes Feather à chaque mise à jour
   useEffect(() => {
     feather.replace();
   });
 
-
-  // ... (La logique useEffect pour les graphiques reste identique)
+  // useEffect pour la gestion des graphiques (CORRIGÉ)
   useEffect(() => {
-    if (!etudiant) return;
+    if (loading || !etudiant) return;
+
+    let progressChartInstance = null;
+    let gradesChartInstance = null;
 
     const initCharts = () => {
-      if (chartsRef.current.progressChart) {
-        chartsRef.current.progressChart.destroy();
-      }
-      if (chartsRef.current.gradesChart) {
-        chartsRef.current.gradesChart.destroy();
-      }
-
       const progressCanvas = document.getElementById("progressChart");
       if (progressCanvas) {
+        if (chartsRef.current.progressChart) {
+          chartsRef.current.progressChart.destroy();
+        }
+
         const progressCtx = progressCanvas.getContext("2d");
-        const progressChart = new Chart(progressCtx, {
+        progressChartInstance = new Chart(progressCtx, {
           type: "line",
           data: {
-            labels: projets.length > 0 ? projets.slice(0, 6).map(p => {
-              const date = new Date(p.Date_deb);
-              return date.toLocaleDateString('fr-FR', { month: 'short' });
-            }) : ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+            labels:
+              projets.length > 0
+                ? projets.slice(0, 6).map((p) => {
+                    const date = new Date(p.Date_deb);
+                    return date.toLocaleDateString("fr-FR", { month: "short" });
+                  })
+                : ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
             datasets: [
               {
                 label: "Progression (%)",
-                data: projets.length > 0 ? projets.slice(0, 6).map(p => p.Avancement || 0) : [0, 0, 0, 0, 0, 0],
+                data:
+                  projets.length > 0
+                    ? projets.slice(0, 6).map((p) => p.Avancement || 0)
+                    : [0, 0, 0, 0, 0, 0],
                 borderColor: "rgb(59, 130, 246)",
                 backgroundColor: "rgba(59, 130, 246, 0.1)",
                 fill: true,
@@ -126,38 +114,47 @@ const Dashboard = () => {
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-              y: {
-                beginAtZero: true,
-                max: 100,
-              },
-            },
+            scales: { y: { beginAtZero: true, max: 100 } },
           },
         });
-
-        chartsRef.current.progressChart = progressChart;
+        chartsRef.current.progressChart = progressChartInstance;
       }
 
       const gradesCanvas = document.getElementById("gradesChart");
       if (gradesCanvas) {
+        if (chartsRef.current.gradesChart) {
+          chartsRef.current.gradesChart.destroy();
+        }
+
         const gradesCtx = gradesCanvas.getContext("2d");
-        const gradesChart = new Chart(gradesCtx, {
+        gradesChartInstance = new Chart(gradesCtx, {
           type: "bar",
           data: {
-            labels: livrables && livrables.length > 0 ?
-              livrables.slice(0, 5).map(l => l.Titre || l.Nom || 'Livrable') :
-              ["Rapport 1", "Maquettes", "Code source", "Présentation", "Rapport final"],
+            labels:
+              livrables && livrables.length > 0
+                ? livrables
+                    .slice(0, 5)
+                    .map((l) => l.Titre || l.Nom || "Livrable")
+                : [
+                    "Rapport 1",
+                    "Maquettes",
+                    "Code source",
+                    "Présentation",
+                    "Rapport final",
+                  ],
             datasets: [
               {
                 label: "Notes /20",
-                data: livrables && livrables.length > 0 ?
-                  livrables.slice(0, 5).map(l => {
-                    if (l.Status && l.Status.includes('/20')) {
-                      const match = l.Status.match(/(\d+(?:\.\d+)?)\/20/);
-                      return match ? parseFloat(match[1]) : 0;
-                    }
-                    return 0;
-                  }) : [0, 0, 0, 0, 0],
+                data:
+                  livrables && livrables.length > 0
+                    ? livrables.slice(0, 5).map((l) => {
+                        if (l.Status && l.Status.includes("/20")) {
+                          const match = l.Status.match(/(\d+(?:\.\d+)?)\/20/);
+                          return match ? parseFloat(match[1]) : 0;
+                        }
+                        return 0;
+                      })
+                    : [0, 0, 0, 0, 0],
                 backgroundColor: [
                   "rgba(59, 130, 246, 0.7)",
                   "rgba(16, 185, 129, 0.7)",
@@ -171,16 +168,10 @@ const Dashboard = () => {
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            scales: {
-              y: {
-                beginAtZero: true,
-                max: 20,
-              },
-            },
+            scales: { y: { beginAtZero: true, max: 20 } },
           },
         });
-
-        chartsRef.current.gradesChart = gradesChart;
+        chartsRef.current.gradesChart = gradesChartInstance;
       }
     };
 
@@ -188,16 +179,16 @@ const Dashboard = () => {
 
     return () => {
       clearTimeout(timer);
-      if (chartsRef.current.progressChart) {
-        chartsRef.current.progressChart.destroy();
+      if (progressChartInstance) {
+        progressChartInstance.destroy();
       }
-      if (chartsRef.current.gradesChart) {
-        chartsRef.current.gradesChart.destroy();
+      if (gradesChartInstance) {
+        gradesChartInstance.destroy();
       }
     };
-  }, [etudiant]);
+  }, [etudiant, projets, livrables, loading]);
 
-  // ... (La logique useEffect pour la synchronisation reste identique)
+  // useEffect pour la synchronisation des données utilisateur
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "user" && e.newValue) {
@@ -223,8 +214,7 @@ const Dashboard = () => {
       window.removeEventListener("userProfileUpdated", handleUserUpdate);
     };
   }, []);
-  
-  // Fonction de déconnexion
+
   const handleLogout = () => {
     localStorage.clear();
     navigate("/login");
@@ -232,12 +222,11 @@ const Dashboard = () => {
 
   const profileImageUrl =
     etudiant?.Image && !etudiant.Image.startsWith("http")
-      ? `http://localhost:5000${etudiant.Image}${
-          etudiant.Image.includes("?") ? "&" : "?"
-        }t=${new Date().getTime()}`
+      ? `http://localhost:5000${etudiant.Image}?t=${new Date().getTime()}`
       : etudiant?.Image || "http://static.photos/people/200x200/2";
 
-  if (!etudiant) {
+  // Affichage de l'écran de chargement
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <p className="text-xl text-gray-700">
@@ -249,7 +238,7 @@ const Dashboard = () => {
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
-      {/* Navbar (MODIFIÉE) - Prise depuis parametreEtudiant.jsx */}
+      {/* Navbar */}
       <nav className="bg-blue-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -291,12 +280,16 @@ const Dashboard = () => {
                     onClick={handleLogout}
                     className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i> Déconnexion
+                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i>{" "}
+                    Déconnexion
                   </button>
                 </div>
               </div>
             </div>
-            <button onClick={handleLogout} className="md:hidden p-2 rounded text-white hover:bg-blue-600">
+            <button
+              onClick={handleLogout}
+              className="md:hidden p-2 rounded text-white hover:bg-blue-600"
+            >
               <i data-feather="log-out" className="h-6 w-6"></i>
             </button>
           </div>
@@ -305,8 +298,7 @@ const Dashboard = () => {
 
       {/* Main Content Wrapper */}
       <div className="flex flex-1">
-        
-        {/* Sidebar (MODIFIÉE) - Prise depuis parametreEtudiant.jsx */}
+        {/* Sidebar */}
         <aside
           className={`sidebar bg-white w-64 min-h-screen border-r ${
             sidebarOpen ? "" : "hidden"
@@ -328,28 +320,59 @@ const Dashboard = () => {
             </div>
           </div>
           <nav className="p-4 space-y-1">
-            <Link to="/dashboard" className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
-              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
+            <Link
+              to="/dashboard"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700"
+            >
+              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de
+              bord
             </Link>
-            <Link to="/mes_projet" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600">
-              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes projets
+            <Link
+              to="/mes_projet"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes
+              projets
             </Link>
-            <Link to="/mes_livrables" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600">
-              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes livrables
+            <Link
+              to="/mes_livrables"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes
+              livrables
             </Link>
-            <Link to="/calendrierEtudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600">
-              <i data-feather="calendar" className="mr-3 h-5 w-5"></i> Calendrier
+            <Link
+              to="/calendrierEtudiant"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="calendar" className="mr-3 h-5 w-5"></i>{" "}
+              Calendrier
             </Link>
-            <Link to="/statistique_etudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600">
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Mes statistiques
+            <Link
+              to="/statistique_etudiant"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Mes
+              statistiques
             </Link>
-            <Link to="/parametre_etudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600">
-              <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
+            <Link
+              to="/parametre_etudiant"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="settings" className="mr-3 h-5 w-5"></i>{" "}
+              Paramètres
+            </Link>
+            <Link
+              to="/"
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
+            >
+              <i data-feather="log-out" className="mr-3 h-5 w-5"></i>{" "}
+              Déconnexion
             </Link>
           </nav>
         </aside>
 
-        {/* Contenu principal (NON MODIFIÉ) */}
+        {/* Contenu principal */}
         <main className="flex-1 p-6 overflow-y-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-800">
@@ -402,22 +425,27 @@ const Dashboard = () => {
                     Prochain rendu
                   </p>
                   <p className="text-2xl font-semibold text-gray-800">
-                    {calendrier && calendrier.length > 0 ?
-                      (() => {
-                        const prochainLivrable = calendrier
-                          .filter(e => e.type === 'Livrable')
-                          .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
-                        if (prochainLivrable) {
-                          const today = new Date();
-                          const deadline = new Date(prochainLivrable.date);
-                          const diffTime = deadline - today;
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          return diffDays > 0 ? `${diffDays}j` : 'Aujourd\'hui';
-                        }
-                        return 'N/A';
-                      })()
-                      : 'N/A'
-                    }
+                    {calendrier && calendrier.length > 0
+                      ? (() => {
+                          const prochainLivrable = calendrier
+                            .filter((e) => e.type === "Livrable")
+                            .sort(
+                              (a, b) => new Date(a.date) - new Date(b.date)
+                            )[0];
+                          if (prochainLivrable) {
+                            const today = new Date();
+                            const deadline = new Date(prochainLivrable.date);
+                            const diffTime = deadline - today;
+                            const diffDays = Math.ceil(
+                              diffTime / (1000 * 60 * 60 * 24)
+                            );
+                            return diffDays > 0
+                              ? `${diffDays}j`
+                              : "Aujourd'hui";
+                          }
+                          return "N/A";
+                        })()
+                      : "N/A"}
                   </p>
                 </div>
               </div>
@@ -432,24 +460,30 @@ const Dashboard = () => {
                     Moyenne générale
                   </p>
                   <p className="text-2xl font-semibold text-gray-800">
-                    {livrables && livrables.length > 0 ?
-                      (() => {
-                        const livrablesAvecNotes = livrables.filter(l => l.Status && l.Status.includes('/20'));
-                        if (livrablesAvecNotes.length > 0) {
-                          const notes = livrablesAvecNotes.map(l => {
-                            const match = l.Status.match(/(\d+(?:\.\d+)?)\/20/);
-                            return match ? parseFloat(match[1]) : null;
-                          }).filter(n => n !== null);
+                    {livrables && livrables.length > 0
+                      ? (() => {
+                          const livrablesAvecNotes = livrables.filter(
+                            (l) => l.Status && l.Status.includes("/20")
+                          );
+                          if (livrablesAvecNotes.length > 0) {
+                            const notes = livrablesAvecNotes
+                              .map((l) => {
+                                const match =
+                                  l.Status.match(/(\d+(?:\.\d+)?)\/20/);
+                                return match ? parseFloat(match[1]) : null;
+                              })
+                              .filter((n) => n !== null);
 
-                          if (notes.length > 0) {
-                            const moyenne = notes.reduce((sum, note) => sum + note, 0) / notes.length;
-                            return `${moyenne.toFixed(1)}/20`;
+                            if (notes.length > 0) {
+                              const moyenne =
+                                notes.reduce((sum, note) => sum + note, 0) /
+                                notes.length;
+                              return `${moyenne.toFixed(1)}/20`;
+                            }
                           }
-                        }
-                        return 'N/A';
-                      })()
-                      : 'N/A'
-                    }
+                          return "N/A";
+                        })()
+                      : "N/A"}
                   </p>
                 </div>
               </div>
@@ -467,123 +501,126 @@ const Dashboard = () => {
                   </h2>
                 </div>
                 <div className="divide-y divide-gray-200">
+                  {/* Item 1 */}
                   <div className="px-4 py-3 flex items-center hover:bg-gray-50">
                     <div className="flex-shrink-0 bg-red-100 rounded-lg p-3">
-                      <i data-feather="alert-circle" className="h-6 w-6 text-red-600"></i>
+                      <i
+                        data-feather="alert-circle"
+                        className="h-6 w-6 text-red-600"
+                      ></i>
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-red-600">
-                          {calendrier && calendrier.length > 0 ?
-                            calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[0]?.title || 'Rapport final'
-                            : 'Rapport final'
-                          }
+                          {calendrier.filter((e) => e.type === "Livrable")[0]
+                            ?.title || "Rapport final"}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {calendrier && calendrier.length > 0 ?
-                            (() => {
-                              const prochainLivrable = calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[0];
-                              if (prochainLivrable) {
-                                const today = new Date();
-                                const deadline = new Date(prochainLivrable.date);
-                                const diffTime = deadline - today;
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                return diffDays > 0 ? `Dans ${diffDays} jours` : 'Aujourd\'hui';
-                              }
-                              return 'Dans 3 jours';
-                            })()
-                            : 'Dans 3 jours'
-                          }
+                          {(() => {
+                            const echeance = calendrier.filter(
+                              (e) => e.type === "Livrable"
+                            )[0];
+                            if (!echeance) return "Date non définie";
+                            const diffDays = Math.ceil(
+                              (new Date(echeance.date) - new Date()) /
+                                (1000 * 60 * 60 * 24)
+                            );
+                            return diffDays > 0
+                              ? `Dans ${diffDays} jours`
+                              : "Aujourd'hui";
+                          })()}
                         </p>
                       </div>
                       <p className="text-sm text-gray-500">
-                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Système de gestion académique' : 'Système de gestion académique'}
+                        Projet: {projets[0]?.Theme || "Non assigné"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'}
+                        Enseignant: {projets[0]?.Nom_encadreur || "Non assigné"}
                       </p>
                     </div>
                   </div>
+                  {/* Item 2 */}
                   <div className="px-4 py-3 flex items-center hover:bg-gray-50">
                     <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
-                      <i data-feather="clock" className="h-6 w-6 text-yellow-600"></i>
+                      <i
+                        data-feather="clock"
+                        className="h-6 w-6 text-yellow-600"
+                      ></i>
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-yellow-600">
-                          {calendrier && calendrier.length > 0 ?
-                            calendrier.filter(e => e.type === 'Livrable').slice(0, 3)[1]?.title || 'Présentation'
-                            : 'Présentation'
-                          }
+                          {calendrier.filter((e) => e.type === "Livrable")[1]
+                            ?.title || "Présentation"}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {calendrier && calendrier.length > 0 ?
-                            (() => {
-                              const livrables = calendrier.filter(e => e.type === 'Livrable').slice(0, 3);
-                              if (livrables[1]) {
-                                const today = new Date();
-                                const deadline = new Date(livrables[1].date);
-                                const diffTime = deadline - today;
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                return diffDays > 0 ? `Dans ${diffDays} jours` : 'Aujourd\'hui';
-                              }
-                              return 'Dans 1 semaine';
-                            })()
-                            : 'Dans 1 semaine'
-                          }
+                          {(() => {
+                            const echeance = calendrier.filter(
+                              (e) => e.type === "Livrable"
+                            )[1];
+                            if (!echeance) return "Date non définie";
+                            const diffDays = Math.ceil(
+                              (new Date(echeance.date) - new Date()) /
+                                (1000 * 60 * 60 * 24)
+                            );
+                            return diffDays > 0
+                              ? `Dans ${diffDays} jours`
+                              : "Aujourd'hui";
+                          })()}
                         </p>
                       </div>
                       <p className="text-sm text-gray-500">
-                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Système de gestion académique' : 'Système de gestion académique'}
+                        Projet: {projets[0]?.Theme || "Non assigné"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'}
+                        Enseignant: {projets[0]?.Nom_encadreur || "Non assigné"}
                       </p>
                     </div>
                   </div>
+                  {/* Item 3 */}
                   <div className="px-4 py-3 flex items-center hover:bg-gray-50">
                     <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                      <i data-feather="calendar" className="h-6 w-6 text-blue-600"></i>
+                      <i
+                        data-feather="calendar"
+                        className="h-6 w-6 text-blue-600"
+                      ></i>
                     </div>
                     <div className="ml-4 flex-1">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-blue-600">
-                          {calendrier && calendrier.length > 0 ?
-                            calendrier.filter(e => e.type === 'Projet').slice(0, 3)[0]?.title || 'Réunion de suivi'
-                            : 'Réunion de suivi'
-                          }
+                          {calendrier.filter((e) => e.type === "Projet")[0]
+                            ?.title || "Réunion de suivi"}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {calendrier && calendrier.length > 0 ?
-                            (() => {
-                              const projetsEcheance = calendrier.filter(e => e.type === 'Projet').slice(0, 3);
-                              if (projetsEcheance[0]) {
-                                const today = new Date();
-                                const deadline = new Date(projetsEcheance[0].date);
-                                const diffTime = deadline - today;
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                if (diffDays === 1) return 'Demain';
-                                else if (diffDays === 0) return 'Aujourd\'hui';
-                                else if (diffDays > 0) return `Dans ${diffDays} jours`;
-                                else return 'En retard';
-                              }
-                              return 'Demain - 10:00';
-                            })()
-                            : 'Demain - 10:00'
-                          }
+                          {(() => {
+                            const echeance = calendrier.filter(
+                              (e) => e.type === "Projet"
+                            )[0];
+                            if (!echeance) return "Date non définie";
+                            const diffDays = Math.ceil(
+                              (new Date(echeance.date) - new Date()) /
+                                (1000 * 60 * 60 * 24)
+                            );
+                            if (diffDays === 1) return "Demain";
+                            if (diffDays === 0) return "Aujourd'hui";
+                            return `Dans ${diffDays} jours`;
+                          })()}
                         </p>
                       </div>
                       <p className="text-sm text-gray-500">
-                        Projet: {projets && projets.length > 0 ? projets[0]?.Theme || 'Plateforme e-learning' : 'Plateforme e-learning'}
+                        Projet: {projets[0]?.Theme || "Non assigné"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Enseignant: {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'Sophie Martin' : 'Sophie Martin'}
+                        Enseignant: {projets[0]?.Nom_encadreur || "Non assigné"}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="px-4 py-3 bg-gray-50 text-right">
-                  <Link to="/mes_livrables" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                  <Link
+                    to="/mes_livrables"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  >
                     Voir tous les livrables
                   </Link>
                 </div>
@@ -598,85 +635,50 @@ const Dashboard = () => {
                   </h2>
                 </div>
                 <div className="divide-y divide-gray-200">
-                  <div className="px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
-                        <p className="ml-2 text-sm font-medium text-gray-900">
-                          {livrables && livrables.length > 0 ?
-                            (livrables[0]?.Titre || livrables[0]?.Nom || 'Rapport intermédiaire')
-                            : 'Rapport intermédiaire'
-                          }
-                        </p>
+                  {livrables.slice(0, 2).map((livrable, index) => (
+                    <div className="px-4 py-3" key={index}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <i
+                            data-feather="check-circle"
+                            className="h-5 w-5 text-green-500"
+                          ></i>
+                          <p className="ml-2 text-sm font-medium text-gray-900">
+                            {livrable.Titre ||
+                              livrable.Nom ||
+                              "Livrable sans titre"}
+                          </p>
+                        </div>
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                          {livrable.Status && livrable.Status.includes("/20")
+                            ? livrable.Status.match(/(\d+(?:\.\d+)?)\/20/)[0]
+                            : "Validé"}
+                        </span>
                       </div>
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {livrables && livrables.length > 0 ?
-                          (() => {
-                            const status = livrables[0]?.Status;
-                            if (status && status.includes('/20')) {
-                              const match = status.match(/(\d+(?:\.\d+)?)\/20/);
-                              return match ? `${match[1]}/20` : 'N/A';
-                            }
-                            return 'N/A';
-                          })()
-                          : '16/20'
-                        }
-                      </span>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {livrable.Status && !livrable.Status.includes("/20")
+                          ? livrable.Status
+                          : "Feedback non disponible."}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {projets[0]?.Nom_encadreur || "Encadreur"} -{" "}
+                        {new Date(livrable.Date_soumission).toLocaleDateString(
+                          "fr-FR"
+                        )}
+                      </p>
                     </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {livrables && livrables.length > 0 ?
-                        (livrables[0]?.Status && !livrables[0]?.Status.includes('/20') ?
-                          livrables[0]?.Status :
-                          "Bon travail, mais approfondir la partie méthodologie"
-                        )
-                        : "Bon travail, mais approfondir la partie méthodologie"
-                      }
+                  ))}
+                  {livrables.length === 0 && (
+                    <p className="p-4 text-sm text-gray-500">
+                      Aucun retour récent à afficher.
                     </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'John Doe' : 'John Doe'} - {livrables && livrables.length > 0 ? new Date(livrables[0]?.Date_soumission).toLocaleDateString('fr-FR') : '15/05/2023'}
-                    </p>
-                  </div>
-                  <div className="px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
-                        <p className="ml-2 text-sm font-medium text-gray-900">
-                          {livrables && livrables.length > 1 ?
-                            (livrables[1]?.Titre || livrables[1]?.Nom || 'Maquettes UI')
-                            : 'Maquettes UI'
-                          }
-                        </p>
-                      </div>
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        {livrables && livrables.length > 1 ?
-                          (() => {
-                            const status = livrables[1]?.Status;
-                            if (status && status.includes('/20')) {
-                              const match = status.match(/(\d+(?:\.\d+)?)\/20/);
-                              return match ? `${match[1]}/20` : 'N/A';
-                            }
-                            return 'N/A';
-                          })()
-                          : '18/20'
-                        }
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {livrables && livrables.length > 1 ?
-                        (livrables[1]?.Status && !livrables[1]?.Status.includes('/20') ?
-                          livrables[1]?.Status :
-                          "Excellente ergonomie, poursuivre dans cette direction"
-                        )
-                        : "Excellente ergonomie, poursuivre dans cette direction"
-                      }
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {projets && projets.length > 0 ? projets[0]?.Nom_encadreur || 'Sophie Martin' : 'Sophie Martin'} - {livrables && livrables.length > 1 ? new Date(livrables[1]?.Date_soumission).toLocaleDateString('fr-FR') : '10/05/2023'}
-                    </p>
-                  </div>
+                  )}
                 </div>
                 <div className="px-4 py-3 bg-gray-50 text-right">
-                  <Link to="/messagerie" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                  <Link
+                    to="/messagerie"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  >
                     Voir tous les retours
                   </Link>
                 </div>
@@ -691,7 +693,10 @@ const Dashboard = () => {
                 <h2 className="text-lg font-medium text-gray-900">
                   Mes projets
                 </h2>
-                <Link to="/mes_projet" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                <Link
+                  to="/mes_projet"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                >
                   Voir tous
                 </Link>
               </div>
@@ -699,12 +704,42 @@ const Dashboard = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enseignant</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date de début</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avancement</th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Projet
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Enseignant
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Date de début
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Échéance
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Avancement
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -712,32 +747,64 @@ const Dashboard = () => {
                       projets.map((p, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{p.Theme}</div>
-                            <div className="text-sm text-gray-500">{p.Description}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {p.Theme}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {p.Description}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <img className="h-6 w-6 rounded-full mr-2" src="http://static.photos/people/200x200/1" alt=""/>
-                              <span className="text-sm">{p.Id_encadreur}</span>
+                              <img
+                                className="h-6 w-6 rounded-full mr-2"
+                                src="http://static.photos/people/200x200/1"
+                                alt=""
+                              />
+                              <span className="text-sm">{p.Nom_encadreur}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_deb}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_fin}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(p.Date_deb).toLocaleDateString("fr-FR")}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(p.Date_fin).toLocaleDateString("fr-FR")}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="w-full bg-gray-200 rounded-full h-2.5">
-                              <div className="bg-blue-600 h-2.5 rounded-full progress-bar" style={{ width: `${p.Avancement}%` }}></div>
+                              <div
+                                className="bg-blue-600 h-2.5 rounded-full"
+                                style={{ width: `${p.Avancement}%` }}
+                              ></div>
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">{p.Avancement}% complété</div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {p.Avancement}% complété
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <Link to={`/projet/${p.Id_projet}`} className="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></Link>
-                            <Link to="/messagerie" className="text-green-600 hover:text-green-900"><i data-feather="message-square"></i></Link>
+                            <Link
+                              to={`/projet/${p.Id_projet}`}
+                              className="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                              <i data-feather="eye"></i>
+                            </Link>
+                            <Link
+                              to="/messagerie"
+                              className="text-green-600 hover:text-green-900"
+                            >
+                              <i data-feather="message-square"></i>
+                            </Link>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500 text-sm">Aucun projet trouvé.</td>
+                        <td
+                          colSpan="6"
+                          className="px-6 py-4 text-center text-gray-500 text-sm"
+                        >
+                          Aucun projet trouvé.
+                        </td>
                       </tr>
                     )}
                   </tbody>
@@ -746,7 +813,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Progress Chart */}
+          {/* Progress & Grades Charts */}
           <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-white p-6 rounded-lg shadow">
               <h2 className="text-lg font-medium text-gray-900 mb-4">
