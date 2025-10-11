@@ -1,12 +1,75 @@
-import React, { useEffect, useRef } from 'react';
-import { Link } from "react-router-dom"; // Assurez-vous d'avoir bien importé Link
+import React, { useEffect, useState, useRef } from 'react';
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import feather from "feather-icons";
 
 const StudentStatisticsDashboard = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [etudiant, setEtudiant] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
   const projectsChartRef = useRef(null);
   const deliverablesChartRef = useRef(null);
   const gradesChartRef = useRef(null);
   const timeChartRef = useRef(null);
   const chartsRef = useRef({});
+
+  // Récupérer les données de l'utilisateur au chargement
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const storedRole = localStorage.getItem("role");
+
+    if (!storedUser || storedRole !== "etudiant") {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      const userData = JSON.parse(storedUser);
+      setEtudiant(userData);
+      setLoading(false);
+      console.log("✅ Données utilisateur chargées:", userData);
+    } catch (error) {
+      console.error("❌ Erreur de chargement:", error);
+      localStorage.clear();
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  // Écouter les changements dans localStorage pour mettre à jour les données utilisateur
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "user" && e.newValue) {
+        try {
+          const updatedUser = JSON.parse(e.newValue);
+          setEtudiant(updatedUser);
+          console.log("🔄 Données utilisateur mises à jour:", updatedUser);
+        } catch (error) {
+          console.error("❌ Erreur lors de la mise à jour des données:", error);
+        }
+      }
+    };
+
+    // Écouter les événements personnalisés de mise à jour utilisateur
+    const handleUserUpdate = (e) => {
+      const updatedUser = e.detail;
+      setEtudiant(updatedUser);
+      console.log("🔄 Données utilisateur mises à jour via événement personnalisé:", updatedUser);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("userProfileUpdated", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userProfileUpdated", handleUserUpdate);
+    };
+  }, []);
+
+  useEffect(() => {
+    feather.replace();
+  });
 
   useEffect(() => {
     const initializeCharts = () => {
@@ -130,6 +193,24 @@ const StudentStatisticsDashboard = () => {
       });
     };
   }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
+
+  if (loading || !etudiant) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <p className="text-xl text-gray-700">🔄 Chargement...</p>
+      </div>
+    );
+  }
+
+  // Construire l'URL de l'image avec cache busting
+  const profileImageUrl = etudiant.Image && !etudiant.Image.startsWith('http')
+    ? `http://localhost:5000${etudiant.Image}${etudiant.Image.includes('?') ? '&' : '?'}t=${new Date().getTime()}`
+    : etudiant.Image || "http://static.photos/people/200x200/2";
 
   const Icon = ({ name, className = "h-5 w-5" }) => {
     const icons = {
@@ -288,8 +369,16 @@ const StudentStatisticsDashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <Icon name="book-open" className="h-8 w-8" />
-              <div className="hidden md:block ml-10 space-x-4">
+              <button
+                type="button"
+                className="md:hidden mr-3 p-2 rounded text-white hover:bg-blue-600"
+                onClick={() => setSidebarOpen((s) => !s)}
+                aria-label="Toggle menu"
+              >
+                <i data-feather="menu" className="h-6 w-6" />
+              </button>
+              <i data-feather="book-open" className="h-8 w-8"></i>
+              <div className="hidden md:block ml-3 sm:ml-10">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
                   Espace Étudiant
                 </p>
@@ -297,27 +386,55 @@ const StudentStatisticsDashboard = () => {
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <button className="p-1 rounded-full text-blue-200 hover:text-white relative">
-                <Icon name="bell" />
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                <i data-feather="bell"></i>
+                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
               </button>
-              <div className="flex items-center">
-                <Avatar src="http://static.photos/people/200x200/2" />
-                <span className="ml-2 text-sm font-medium">Jean Dupont</span>
-                <Icon name="chevron-down" className="ml-1 h-4 w-4" />
+              <div className="group relative">
+                <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
+                  <img
+                    className="h-8 w-8 rounded-full"
+                    src={profileImageUrl}
+                    alt="Profile"
+                  />
+                  <span className="ml-2 text-sm font-medium">
+                    {etudiant.Nom}
+                  </span>
+                  <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
+                </div>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i> Déconnexion
+                  </button>
+                </div>
               </div>
             </div>
+            <button onClick={handleLogout} className="md:hidden p-2 rounded text-white hover:bg-blue-600">
+              <i data-feather="log-out" className="h-6 w-6"></i>
+            </button>
           </div>
         </div>
       </nav>
 
-      <div className="flex">
+      <div className="flex flex-1">
         {/* Sidebar */}
-        <aside className="bg-white w-64 min-h-screen border-r hidden md:block">
+        <aside
+          className={`sidebar bg-white w-64 min-h-screen border-r ${sidebarOpen ? "" : "hidden"
+            } md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}
+        >
           <div className="p-4 border-b flex items-center">
-            <Avatar src="http://static.photos/people/200x200/2" className="h-10 w-10" />
+            <img
+              className="h-10 w-10 rounded-full"
+              src={profileImageUrl}
+              alt="Avatar de l'étudiant"
+            />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">Jean Dupont</p>
-              <p className="text-xs text-gray-500">Étudiant M1</p>
+              <p className="text-sm font-medium text-gray-700">
+                {etudiant.Nom}
+              </p>
+              <p className="text-xs text-gray-500">Étudiant {etudiant.Niveau}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">

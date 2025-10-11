@@ -46,7 +46,7 @@ const CalendrierEtudiant = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // Fonction de déconnexion simulée
+    // Fonction de déconnexion
     const handleLogout = () => {
         localStorage.clear();
         navigate("/login");
@@ -82,7 +82,37 @@ const CalendrierEtudiant = () => {
     // Assurer le remplacement des icônes lors des mises à jour du DOM (y compris les événements FullCalendar)
     useEffect(() => {
         feather.replace();
-    }); 
+    });
+
+    // Écouter les changements dans localStorage pour mettre à jour les données utilisateur
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === "user" && e.newValue) {
+                try {
+                    const updatedUser = JSON.parse(e.newValue);
+                    setEtudiant(updatedUser);
+                    console.log("🔄 Données utilisateur mises à jour dans calendrier:", updatedUser);
+                } catch (error) {
+                    console.error("❌ Erreur lors de la mise à jour des données:", error);
+                }
+            }
+        };
+
+        // Écouter les événements personnalisés de mise à jour utilisateur
+        const handleUserUpdate = (e) => {
+            const updatedUser = e.detail;
+            setEtudiant(updatedUser);
+            console.log("🔄 Données utilisateur mises à jour via événement personnalisé:", updatedUser);
+        };
+
+        window.addEventListener("storage", handleStorageChange);
+        window.addEventListener("userProfileUpdated", handleUserUpdate);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("userProfileUpdated", handleUserUpdate);
+        };
+    }, []);
 
     const fetchEvents = async (etudiantId) => {
         try {
@@ -119,10 +149,15 @@ const CalendrierEtudiant = () => {
     if (loading || !etudiant) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                <p className="text-xl text-gray-700">Chargement du calendrier...</p>
+                <p className="text-xl text-gray-700">🔄 Chargement du calendrier...</p>
             </div>
         );
     }
+
+    // Construire l'URL de l'image avec cache busting
+    const profileImageUrl = etudiant.Image && !etudiant.Image.startsWith('http')
+        ? `http://localhost:5000${etudiant.Image}${etudiant.Image.includes('?') ? '&' : '?'}t=${new Date().getTime()}`
+        : etudiant.Image || "http://static.photos/people/200x200/2";
 
     return (
         <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
@@ -154,11 +189,11 @@ const CalendrierEtudiant = () => {
                                 <i data-feather="bell"></i>
                                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
                             </button>
-                            <div className="group relative"> 
+                            <div className="group relative">
                                 <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
                                     <img
                                         className="h-8 w-8 rounded-full"
-                                        src="http://static.photos/people/200x200/2"
+                                        src={profileImageUrl}
                                         alt="Profile"
                                     />
                                     <span className="ml-2 text-sm font-medium">
@@ -193,14 +228,14 @@ const CalendrierEtudiant = () => {
                     <div className="p-4 border-b flex items-center">
                         <img
                             className="h-10 w-10 rounded-full"
-                            src="http://static.photos/people/200x200/2"
-                            alt=""
+                            src={profileImageUrl}
+                            alt="Avatar de l'étudiant"
                         />
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-700">
                                 {etudiant.Nom}
                             </p>
-                            <p className="text-xs text-gray-500">Étudiant M1</p>
+                            <p className="text-xs text-gray-500">Étudiant {etudiant.Niveau}</p>
                         </div>
                     </div>
                     <nav className="p-4 space-y-1">

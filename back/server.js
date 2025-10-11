@@ -10,14 +10,19 @@ const app = express();
 const PORT = 5000;
 
 // ------------------- MIDDLEWARE -------------------
-app.use(cors());
+app.use(cors({
+  origin: true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires']
+}));
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// DÉSACTIVER LE CACHE POUR TOUTES LES REQUÊTES GET
+// DÉSACTIVER LE CACHE POUR LES IMAGES UNIQUEMENT
 app.use((req, res, next) => {
-  if (req.method === 'GET') {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  if (req.method === 'GET' && req.path.startsWith('/uploads')) {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
   }
@@ -575,7 +580,16 @@ app.put("/etudiants/:id", async (req, res) => {
 app.post("/etudiants/:id/photo", upload.single("photo"), async (req, res) => {
   const etudiantId = req.params.id;
 
+  console.log(`🖼️ Requête de mise à jour photo reçue pour l'étudiant ID: ${etudiantId}`);
+  console.log(`📎 Fichier reçu:`, req.file ? {
+    filename: req.file.filename,
+    originalname: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size
+  } : 'Aucun fichier');
+
   if (!req.file) {
+    console.error(`❌ Aucun fichier reçu pour l'étudiant ${etudiantId}`);
     return res.status(400).json({ error: "Aucun fichier n'a été envoyé." });
   }
 
@@ -583,6 +597,19 @@ app.post("/etudiants/:id/photo", upload.single("photo"), async (req, res) => {
   console.log(`🖼️ Mise à jour de la photo pour l'étudiant ID: ${etudiantId}. Nouveau chemin: ${imagePath}`);
 
   try {
+    // Vérifier que l'étudiant existe d'abord
+    const [etudiantCheck] = await pool.query(
+      "SELECT Immatricule, Nom, Image FROM etudiant WHERE Immatricule = ?",
+      [etudiantId]
+    );
+
+    if (etudiantCheck.length === 0) {
+      console.error(`❌ Étudiant ${etudiantId} non trouvé`);
+      return res.status(404).json({ error: "Étudiant non trouvé." });
+    }
+
+    console.log(`📋 Étudiant trouvé: ${etudiantCheck[0].Nom}, ancienne image: ${etudiantCheck[0].Image}`);
+
     // Mettre à jour le chemin de l'image dans la base de données
     const [result] = await pool.query(
       "UPDATE etudiant SET Image = ? WHERE Immatricule = ?",
@@ -590,13 +617,30 @@ app.post("/etudiants/:id/photo", upload.single("photo"), async (req, res) => {
     );
 
     if (result.affectedRows === 0) {
+      console.error(`❌ Aucune ligne mise à jour pour l'étudiant ${etudiantId}`);
       return res.status(404).json({ error: "Étudiant non trouvé." });
     }
+
+    console.log(`✅ Base de données mise à jour. Lignes affectées: ${result.affectedRows}`);
+
+    // Vérifier la mise à jour en relisant la base de données
+    const [updatedCheck] = await pool.query(
+      "SELECT Image FROM etudiant WHERE Immatricule = ?",
+      [etudiantId]
+    );
+
+    console.log(`🔍 Vérification après mise à jour - Nouvelle image: ${updatedCheck[0].Image}`);
 
     // Renvoyer le chemin de la nouvelle image pour que le frontend puisse l'utiliser
     res.json({
       message: "Photo de profil mise à jour avec succès",
-      imagePath: imagePath
+      imagePath: imagePath,
+      debug: {
+        etudiantId,
+        ancienneImage: etudiantCheck[0].Image,
+        nouvelleImage: updatedCheck[0].Image,
+        fichier: req.file.filename
+      }
     });
 
   } catch (err) {

@@ -812,16 +812,57 @@ const MesProjets = () => {
         }
     }, [navigate]);
 
+    // Écouter les changements dans localStorage pour mettre à jour les données utilisateur
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === "user" && e.newValue) {
+                try {
+                    const updatedUser = JSON.parse(e.newValue);
+                    setEtudiant(updatedUser);
+                    console.log("🔄 Données utilisateur mises à jour dans projets:", updatedUser);
+                } catch (error) {
+                    console.error("❌ Erreur lors de la mise à jour des données:", error);
+                }
+            }
+        };
+
+        // Écouter les événements personnalisés de mise à jour utilisateur
+        const handleUserUpdate = (e) => {
+            const updatedUser = e.detail;
+            setEtudiant(updatedUser);
+            console.log("🔄 Données utilisateur mises à jour via événement personnalisé:", updatedUser);
+        };
+
+        window.addEventListener("storage", handleStorageChange);
+        window.addEventListener("userProfileUpdated", handleUserUpdate);
+
+        return () => {
+            window.removeEventListener("storage", handleStorageChange);
+            window.removeEventListener("userProfileUpdated", handleUserUpdate);
+        };
+    }, []);
+
+    // Fonction de déconnexion
+    const handleLogout = () => {
+        localStorage.clear();
+        navigate("/login");
+    };
+
     if (!etudiant) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-gray-50">
                 <div className="text-center">
-                    <p className="text-xl text-gray-700 mb-4">Chargement des projets...</p>
+                    <p className="text-xl text-gray-700 mb-4">🔄 Chargement des projets...</p>
                     <p className="text-sm text-gray-500">Si le chargement persiste, veuillez vous <Link to="/login" className="text-blue-600 hover:text-blue-800">reconnecter</Link></p>
                 </div>
             </div>
         );
     }
+
+    // Construire l'URL de l'image avec cache busting
+    const profileImageUrl = etudiant?.Image && !etudiant.Image.startsWith('http')
+        ? `http://localhost:5000${etudiant.Image}${etudiant.Image.includes('?') ? '&' : '?'}t=${new Date().getTime()}`
+        : etudiant?.Image || "http://static.photos/people/200x200/2";
 
     return (
         <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
@@ -837,16 +878,30 @@ const MesProjets = () => {
                         </div>
                         <div className="hidden md:flex items-center space-x-4">
                             <button className="p-1 rounded-full text-blue-200 hover:text-white relative"><i data-feather="bell"></i><span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span></button>
-                            <div className="flex items-center"><img className="h-8 w-8 rounded-full" src="http://static.photos/people/200x200/2" alt="Profile" /><span className="ml-2 text-sm font-medium">{etudiant.Nom}</span><i data-feather="chevron-down" className="ml-1 h-4 w-4"></i></div>
+                            <div className="group relative">
+                                <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
+                                    <img className="h-8 w-8 rounded-full" src={profileImageUrl} alt="Profile" />
+                                    <span className="ml-2 text-sm font-medium">{etudiant.Nom}</span>
+                                    <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
+                                </div>
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                                    <button onClick={handleLogout} className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                        <i data-feather="log-out" className="mr-2 h-4 w-4"></i> Déconnexion
+                                    </button>
+                                </div>
+                            </div>
                         </div>
+                        <button onClick={handleLogout} className="md:hidden p-2 rounded text-white hover:bg-blue-600">
+                            <i data-feather="log-out" className="h-6 w-6"></i>
+                        </button>
                     </div>
                 </div>
             </nav>
             <div className="flex flex-1">
-                <aside className={`sidebar bg-white w-64 min-h-screen border-r ${sidebarOpen ? "" : "hidden"} md:block`}>
+                <aside className={`sidebar bg-white w-64 min-h-screen border-r ${sidebarOpen ? "" : "hidden"} md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}>
                     <div className="p-4 border-b flex items-center">
-                        <img className="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="" />
-                        <div className="ml-3"><p className="text-sm font-medium text-gray-700">{etudiant.Nom}</p><p className="text-xs text-gray-500">Étudiant M1</p></div>
+                        <img className="h-10 w-10 rounded-full" src={profileImageUrl} alt="Avatar de l'étudiant" />
+                        <div className="ml-3"><p className="text-sm font-medium text-gray-700">{etudiant.Nom}</p><p className="text-xs text-gray-500">Étudiant {etudiant.Niveau}</p></div>
                     </div>
                     <nav className="p-4 space-y-1">
                         <Link to="/dashboard" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"><i data-feather="home" className="mr-3 h-5 w-5"></i>Tableau de bord</Link>
@@ -855,6 +910,9 @@ const MesProjets = () => {
                         <Link to="/calendrierEtudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"><i data-feather="calendar" className="mr-3 h-5 w-5"></i>Calendrier</Link>
                         <Link to="/statistique_etudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"><i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i>Mes statistiques</Link>
                         <Link to="/parametre_etudiant" className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"><i data-feather="settings" className="mr-3 h-5 w-5"></i>Paramètres</Link>
+                        <button onClick={handleLogout} className="w-full flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 mt-4">
+                            <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+                        </button>
                     </nav>
                 </aside>
                 <main className="flex-1 p-8">

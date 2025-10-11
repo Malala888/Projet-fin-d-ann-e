@@ -83,16 +83,64 @@ const ParametreEtudiant = () => {
         console.log("🚀 Soumission du formulaire avec les données:", formData);
 
         try {
+            // Étape 1: Mettre à jour les données textuelles
             const response = await axios.put(`http://localhost:5000/etudiants/${etudiant.Immatricule}`, formData);
             console.log("✅ Réponse du serveur:", response.data);
+
+            // Étape 2: Si une nouvelle photo a été sélectionnée, l'uploader séparément
+            if (newPhoto) {
+                console.log("📸 Upload de la nouvelle photo...");
+                console.log("📎 Informations du fichier:", {
+                    name: newPhoto.name,
+                    size: newPhoto.size,
+                    type: newPhoto.type
+                });
+
+                const photoFormData = new FormData();
+                photoFormData.append('photo', newPhoto);
+
+                try {
+                    const photoResponse = await axios.post(
+                        `http://localhost:5000/etudiants/${etudiant.Immatricule}/photo`,
+                        photoFormData,
+                        {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        }
+                    );
+                    console.log("✅ Photo uploadée:", photoResponse.data);
+
+                    // Mettre à jour l'image dans les données utilisateur
+                    response.data.user.Image = photoResponse.data.imagePath;
+                } catch (photoError) {
+                    console.error("❌ Erreur lors de l'upload de la photo:", photoError.response ? photoError.response.data : photoError.message);
+                    // Continuer même si l'upload de la photo échoue
+                }
+            }
 
             // Mettre à jour les données locales
             const updatedUser = response.data.user;
             setEtudiant(updatedUser);
             localStorage.setItem("user", JSON.stringify(updatedUser));
 
+            // Forcer la mise à jour de l'image en ajoutant un timestamp
+            if (updatedUser.Image) {
+                const timestamp = new Date().getTime();
+                updatedUser.Image = updatedUser.Image + (updatedUser.Image.includes('?') ? '&' : '?') + '_t=' + timestamp;
+            }
+
+            // Mettre à jour l'état local avec les nouvelles données
+            setEtudiant(updatedUser);
+            localStorage.setItem("user", JSON.stringify(updatedUser));
+
+            // Réinitialiser la nouvelle photo
+            setNewPhoto(null);
+
+            // Déclencher un événement personnalisé pour notifier les autres composants
+            window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updatedUser }));
+
             alert("✅ Profil mis à jour avec succès !");
-            window.location.reload();
 
         } catch (error) {
             console.error("❌ Erreur lors de la mise à jour:", error.response ? error.response.data : error.message);

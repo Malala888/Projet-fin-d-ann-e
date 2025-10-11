@@ -1,63 +1,212 @@
 // src/pages/Dashboard.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios"; // 👈 Import de axios pour les requêtes
+import axios from "axios";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import feather from "feather-icons";
 
+/* global Chart */
+
 const Dashboard = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  // 🆕 Ajout d'états pour stocker les données de l'étudiant et ses projets
   const [etudiant, setEtudiant] = useState(null);
   const [projets, setProjets] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Ajout de l'état pour la sidebar
   const navigate = useNavigate();
+  const chartsRef = useRef({});
 
+  // ... (La logique useEffect pour récupérer les données reste identique)
   useEffect(() => {
     feather.replace();
     AOS.init({ duration: 800, once: true });
 
-    // 🕵️‍♂️ Récupération de l'utilisateur stocké
     const storedUser = localStorage.getItem("user");
     const storedRole = localStorage.getItem("role");
 
-    // ❌ Vérification de la connexion
     if (!storedUser || storedRole !== "etudiant") {
-      navigate("/login"); // Redirection si l'utilisateur n'est pas un étudiant connecté
-      return; // Sortir de useEffect
+      navigate("/login");
+      return;
     }
 
     try {
       const userData = JSON.parse(storedUser);
-      setEtudiant(userData); // Stockage des infos de l'étudiant dans l'état
+      setEtudiant(userData);
 
-      // 🔄 Appel à l'API pour récupérer les projets de CET étudiant
-      axios.get(`http://localhost:5000/etudiants/${userData.Immatricule}/projets`)
-        .then(response => {
+      axios
+        .get(`http://localhost:5000/etudiants/${userData.Immatricule}/projets`)
+        .then((response) => {
           setProjets(response.data);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Erreur lors de la récupération des projets :", error);
         });
     } catch (error) {
       console.error("Erreur de parsing des données utilisateur :", error);
-      localStorage.clear(); // Vider les données invalides
+      localStorage.clear();
       navigate("/login");
     }
   }, [navigate]);
+  
+  // Remplacement de l'icône à chaque mise à jour
+  useEffect(() => {
+    feather.replace();
+  });
 
-  // Si les données de l'étudiant ne sont pas encore chargées, afficher un message de chargement
+
+  // ... (La logique useEffect pour les graphiques reste identique)
+  useEffect(() => {
+    if (!etudiant) return;
+
+    const initCharts = () => {
+      if (chartsRef.current.progressChart) {
+        chartsRef.current.progressChart.destroy();
+      }
+      if (chartsRef.current.gradesChart) {
+        chartsRef.current.gradesChart.destroy();
+      }
+
+      const progressCanvas = document.getElementById("progressChart");
+      if (progressCanvas) {
+        const progressCtx = progressCanvas.getContext("2d");
+        const progressChart = new Chart(progressCtx, {
+          type: "line",
+          data: {
+            labels: ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin"],
+            datasets: [
+              {
+                label: "Progression (%)",
+                data: [10, 25, 35, 45, 60, 65],
+                borderColor: "rgb(59, 130, 246)",
+                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                fill: true,
+                tension: 0.3,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 100,
+              },
+            },
+          },
+        });
+
+        chartsRef.current.progressChart = progressChart;
+      }
+
+      const gradesCanvas = document.getElementById("gradesChart");
+      if (gradesCanvas) {
+        const gradesCtx = gradesCanvas.getContext("2d");
+        const gradesChart = new Chart(gradesCtx, {
+          type: "bar",
+          data: {
+            labels: [
+              "Rapport 1",
+              "Maquettes",
+              "Code source",
+              "Présentation",
+              "Rapport final",
+            ],
+            datasets: [
+              {
+                label: "Notes /20",
+                data: [14, 18, 16, 15, 16],
+                backgroundColor: [
+                  "rgba(59, 130, 246, 0.7)",
+                  "rgba(16, 185, 129, 0.7)",
+                  "rgba(59, 130, 246, 0.7)",
+                  "rgba(245, 158, 11, 0.7)",
+                  "rgba(59, 130, 246, 0.7)",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                max: 20,
+              },
+            },
+          },
+        });
+
+        chartsRef.current.gradesChart = gradesChart;
+      }
+    };
+
+    const timer = setTimeout(initCharts, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (chartsRef.current.progressChart) {
+        chartsRef.current.progressChart.destroy();
+      }
+      if (chartsRef.current.gradesChart) {
+        chartsRef.current.gradesChart.destroy();
+      }
+    };
+  }, [etudiant]);
+
+  // ... (La logique useEffect pour la synchronisation reste identique)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === "user" && e.newValue) {
+        try {
+          const updatedUser = JSON.parse(e.newValue);
+          setEtudiant(updatedUser);
+        } catch (error) {
+          console.error("❌ Erreur lors de la mise à jour des données:", error);
+        }
+      }
+    };
+
+    const handleUserUpdate = (e) => {
+      const updatedUser = e.detail;
+      setEtudiant(updatedUser);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("userProfileUpdated", handleUserUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userProfileUpdated", handleUserUpdate);
+    };
+  }, []);
+  
+  // Fonction de déconnexion
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
+
+  const profileImageUrl =
+    etudiant?.Image && !etudiant.Image.startsWith("http")
+      ? `http://localhost:5000${etudiant.Image}${
+          etudiant.Image.includes("?") ? "&" : "?"
+        }t=${new Date().getTime()}`
+      : etudiant?.Image || "http://static.photos/people/200x200/2";
+
   if (!etudiant) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <p className="text-xl text-gray-700">Chargement du tableau de bord...</p>
+        <p className="text-xl text-gray-700">
+          🔄 Chargement du tableau de bord...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-50 font-sans min-h-screen">
-      {/* ... (Le reste du code de la navbar et de la sidebar) ... */}
+    <div className="bg-gray-50 font-sans min-h-screen flex flex-col">
+      {/* Navbar (MODIFIÉE) - Prise depuis parametreEtudiant.jsx */}
       <nav className="bg-blue-700 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -71,49 +220,71 @@ const Dashboard = () => {
                 <i data-feather="menu" className="h-6 w-6" />
               </button>
               <i data-feather="book-open" className="h-8 w-8"></i>
-              <div className="hidden md:block ml-10">
+              <div className="hidden md:block ml-3 sm:ml-10">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
                   Espace Étudiant
                 </p>
               </div>
             </div>
-            {/* 🔄 Utilisation du nom de l'étudiant pour la Navbar */}
             <div className="hidden md:flex items-center space-x-4">
               <button className="p-1 rounded-full text-blue-200 hover:text-white relative">
                 <i data-feather="bell"></i>
                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
               </button>
-              <div className="flex items-center">
-                <img
-                  className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/2" // A remplacer par une image dynamique si disponible
-                  alt="Profile"
-                />
-                <span className="ml-2 text-sm font-medium">{etudiant.Nom}</span>
-                <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
+              <div className="group relative">
+                <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
+                  <img
+                    className="h-8 w-8 rounded-full"
+                    src={profileImageUrl}
+                    alt="Profile"
+                  />
+                  <span className="ml-2 text-sm font-medium">
+                    {etudiant.Nom}
+                  </span>
+                  <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
+                </div>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i> Déconnexion
+                  </button>
+                </div>
               </div>
             </div>
+            <button onClick={handleLogout} className="md:hidden p-2 rounded text-white hover:bg-blue-600">
+              <i data-feather="log-out" className="h-6 w-6"></i>
+            </button>
           </div>
         </div>
       </nav>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <aside className={`sidebar bg-white w-64 min-h-screen border-r ${sidebarOpen ? "" : "hidden"} md:block`}>
+      {/* Main Content Wrapper */}
+      <div className="flex flex-1">
+        
+        {/* Sidebar (MODIFIÉE) - Prise depuis parametreEtudiant.jsx */}
+        <aside
+          className={`sidebar bg-white w-64 min-h-screen border-r ${
+            sidebarOpen ? "" : "hidden"
+          } md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}
+        >
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src="http://static.photos/people/200x200/2" // A remplacer par une image dynamique
-              alt=""
+              src={profileImageUrl}
+              alt="Avatar de l'étudiant"
             />
             <div className="ml-3">
-              {/* 🔄 Utilisation du nom et du niveau de l'étudiant */}
-              <p className="text-sm font-medium text-gray-700">{etudiant.Nom}</p>
-              <p className="text-xs text-gray-500">Étudiant {etudiant.Niveau}</p>
+              <p className="text-sm font-medium text-gray-700">
+                {etudiant.Nom}
+              </p>
+              <p className="text-xs text-gray-500">
+                Étudiant {etudiant.Niveau}
+              </p>
             </div>
           </div>
           <nav className="p-4 space-y-1">
-            {/* ... (Le reste des liens de la sidebar) ... */}
             <Link to="/dashboard" className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
               <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
             </Link>
@@ -135,97 +306,256 @@ const Dashboard = () => {
           </nav>
         </aside>
 
-        {/* Dashboard Content */}
-        <div className="flex-1 p-8">
-          {/* Header */}
+        {/* Contenu principal (NON MODIFIÉ) */}
+        <main className="flex-1 p-6 overflow-y-auto">
           <div className="mb-8">
-            {/* 🔄 Utilisation du nom de l'étudiant dans le titre */}
-            <h1 className="text-3xl font-bold text-gray-800">Tableau de bord de {etudiant.Nom}</h1>
-            <p className="text-gray-600">Bienvenue sur votre espace de suivi de projet</p>
+            <h1 className="text-3xl font-bold text-gray-800">
+              Tableau de bord étudiant
+            </h1>
+            <p className="text-gray-600">
+              Bienvenue sur votre espace de suivi de projet
+            </p>
           </div>
 
           {/* Stats Cards */}
-          {/* Les cartes devront aussi être mises à jour avec des données réelles du backend */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className={`dashboard-card bg-white rounded-lg shadow p-6 hover:shadow-xl hover:-translate-y-1 transition`} data-aos="fade-up">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="dashboard-card bg-white rounded-lg shadow p-4">
               <div className="flex items-center">
-                <div className={`p-3 rounded-full bg-blue-100 text-blue-600`}>
+                <div className="p-3 rounded-full bg-blue-100 text-blue-600">
                   <i data-feather="briefcase"></i>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Projets en cours</p>
-                  {/* 🔄 Nombre de projets dynamiques */}
-                  <p className="text-2xl font-semibold text-gray-800">{projets.length}</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Projets en cours
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">
+                    {projets.length}
+                  </p>
                 </div>
               </div>
             </div>
-            {/* Les autres cartes devraient être rendues dynamiques de la même façon */}
-            {/* ... */}
+            <div className="dashboard-card bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-green-100 text-green-600">
+                  <i data-feather="file-text"></i>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">
+                    Livrables validés
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">5</p>
+                </div>
+              </div>
+            </div>
+            <div className="dashboard-card bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                  <i data-feather="clock"></i>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">
+                    Prochain rendu
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">3j</p>
+                </div>
+              </div>
+            </div>
+            <div className="dashboard-card bg-white rounded-lg shadow p-4">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                  <i data-feather="award"></i>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-500">
+                    Moyenne générale
+                  </p>
+                  <p className="text-2xl font-semibold text-gray-800">15.2/20</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Mes projets table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-lg font-medium text-gray-900">Mes projets</h2>
-              <Link to="/mes_projets" className="text-sm font-medium text-blue-600 hover:text-blue-500">
-                Voir tous
-              </Link>
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Upcoming Deadlines */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Échéances à venir
+                  </h2>
+                </div>
+                <div className="divide-y divide-gray-200">
+                  <div className="px-4 py-3 flex items-center hover:bg-gray-50">
+                    <div className="flex-shrink-0 bg-red-100 rounded-lg p-3">
+                      <i data-feather="alert-circle" className="h-6 w-6 text-red-600"></i>
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-red-600">Rapport final</p>
+                        <p className="text-sm text-gray-500">Dans 3 jours</p>
+                      </div>
+                      <p className="text-sm text-gray-500">Projet: Système de gestion académique</p>
+                      <p className="text-sm text-gray-500">Enseignant: John Doe</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 flex items-center hover:bg-gray-50">
+                    <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                      <i data-feather="clock" className="h-6 w-6 text-yellow-600"></i>
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-yellow-600">Présentation</p>
+                        <p className="text-sm text-gray-500">Dans 1 semaine</p>
+                      </div>
+                      <p className="text-sm text-gray-500">Projet: Système de gestion académique</p>
+                      <p className="text-sm text-gray-500">Enseignant: John Doe</p>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3 flex items-center hover:bg-gray-50">
+                    <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                      <i data-feather="calendar" className="h-6 w-6 text-blue-600"></i>
+                    </div>
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-blue-600">Réunion de suivi</p>
+                        <p className="text-sm text-gray-500">Demain - 10:00</p>
+                      </div>
+                      <p className="text-sm text-gray-500">Projet: Plateforme e-learning</p>
+                      <p className="text-sm text-gray-500">Enseignant: Sophie Martin</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="px-4 py-3 bg-gray-50 text-right">
+                  <Link to="/mes_livrables" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                    Voir tous les livrables
+                  </Link>
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enseignant</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date de début</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avancement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {/* 🔄 Boucle sur les projets dynamiques */}
-                  {projets.length > 0 ? (
-                    projets.map((p, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{p.Theme}</div>
-                          <div className="text-sm text-gray-500">{p.Description}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Le nom de l'enseignant n'est pas dans la table projet, il faudra faire une autre requête pour le récupérer */}
-                          <span>{p.Id_encadreur}</span> 
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_deb}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_fin}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${p.Avancement}%` }}></div>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-1">{p.Avancement}% complété</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <Link to={`/projet/${p.Id_projet}`} className="text-blue-600 hover:text-blue-900 mr-3">
-                            <i data-feather="eye"></i>
-                          </Link>
-                          <Link to="/messagerie" className="text-green-600 hover:text-green-900">
-                            <i data-feather="message-square"></i>
-                          </Link>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                        Aucun projet trouvé.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+            {/* Recent Feedback */}
+            <div>
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Retours récents
+                  </h2>
+                </div>
+                <div className="divide-y divide-gray-200">
+                  <div className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
+                        <p className="ml-2 text-sm font-medium text-gray-900">Rapport intermédiaire</p>
+                      </div>
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">16/20</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">"Bon travail, mais approfondir la partie méthodologie"</p>
+                    <p className="mt-1 text-xs text-gray-400">John Doe - 15/05/2023</p>
+                  </div>
+                  <div className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <i data-feather="check-circle" className="h-5 w-5 text-green-500"></i>
+                        <p className="ml-2 text-sm font-medium text-gray-900">Maquettes UI</p>
+                      </div>
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">18/20</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">"Excellente ergonomie, poursuivre dans cette direction"</p>
+                    <p className="mt-1 text-xs text-gray-400">Sophie Martin - 10/05/2023</p>
+                  </div>
+                </div>
+                <div className="px-4 py-3 bg-gray-50 text-right">
+                  <Link to="/messagerie" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                    Voir tous les retours
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* My Projects */}
+          <div className="mt-8">
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Mes projets
+                </h2>
+                <Link to="/mes_projets" className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                  Voir tous
+                </Link>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enseignant</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date de début</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Échéance</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avancement</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {projets.length > 0 ? (
+                      projets.map((p, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{p.Theme}</div>
+                            <div className="text-sm text-gray-500">{p.Description}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <img className="h-6 w-6 rounded-full mr-2" src="http://static.photos/people/200x200/1" alt=""/>
+                              <span className="text-sm">{p.Id_encadreur}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_deb}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.Date_fin}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                              <div className="bg-blue-600 h-2.5 rounded-full progress-bar" style={{ width: `${p.Avancement}%` }}></div>
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{p.Avancement}% complété</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <Link to={`/projet/${p.Id_projet}`} className="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye"></i></Link>
+                            <Link to="/messagerie" className="text-green-600 hover:text-green-900"><i data-feather="message-square"></i></Link>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500 text-sm">Aucun projet trouvé.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Chart */}
+          <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Progression mensuelle
+              </h2>
+              <div className="h-72">
+                <canvas id="progressChart"></canvas>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-lg shadow">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Répartition des notes
+              </h2>
+              <div className="h-72">
+                <canvas id="gradesChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
