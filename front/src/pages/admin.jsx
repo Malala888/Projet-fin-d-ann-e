@@ -1,7 +1,57 @@
-// AdminUsers.jsx - VERSION CORRIGÉE AVEC AVATARS FIXES
+// AdminUsers.jsx - VERSION CORRIGÉE
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+
+// --- DÉBUT DES ÉLÉMENTS DÉPLACÉS ---
+// On définit la configuration et les fonctions utilitaires en dehors du composant.
+// Elles ne seront ainsi créées qu'une seule fois et ne causeront pas d'avertissements de dépendances.
+
+// Configuration axios avec headers corrects
+const axiosConfig = {
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+  timeout: 10000, // 10 secondes de timeout
+};
+
+// Fonction pour construire l'URL de l'avatar depuis la base de données
+const getAvatarUrl = (user, role) => {
+  // La colonne pour l'avatar est 'Image' pour les étudiants et 'Avatar' pour les autres
+  const avatarPath = role === "Étudiant" ? user.Image : user.Avatar;
+
+  // Si le chemin existe et n'est pas un placeholder, on construit l'URL complète
+  if (avatarPath && !avatarPath.startsWith('http')) {
+    return `http://localhost:5000${avatarPath}`;
+  }
+  // Sinon, on retourne le chemin tel quel (pour les placeholders http) ou null
+  return avatarPath;
+};
+
+// Fonction de secours pour générer un avatar si celui de la BDD est manquant
+const generateFallbackAvatar = (name, role) => {
+  const safeName = name || "User";
+  // La ligne ci-dessous a été supprimée car la variable 'initials' n'était jamais utilisée.
+  // const initials = safeName.substring(0, 2).toUpperCase(); 
+  
+  const backgroundColor = role === "Étudiant" ? "3B82F6" : "10B981";
+  const encodedName = encodeURIComponent(safeName);
+
+  // L'API ui-avatars.com génère les initiales automatiquement à partir du paramètre 'name'
+  return `https://ui-avatars.com/api/?name=${encodedName}&background=${backgroundColor}&color=fff&size=40`;
+};
+
+// Fonction de normalisation de texte
+const normalize = (str) => {
+  if (!str) return "";
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+};
+
+// --- FIN DES ÉLÉMENTS DÉPLACÉS ---
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -9,43 +59,20 @@ function AdminUsers() {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adminName, setAdminName] = useState("Admin");
+  const [adminAvatar, setAdminAvatar] = useState("");
 
-  // Configuration axios avec headers corrects
-  const axiosConfig = {
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    timeout: 10000, // 10 secondes de timeout
-  };
-
-  // Fonction pour générer un avatar fiable
-  const generateAvatar = (name, role, id) => {
-    // Utiliser UI Avatars comme solution principale (plus fiable)
-    const initials = name ? name.substring(0, 2).toUpperCase() : "??";
-    const backgroundColor = role === "Étudiant" ? "3B82F6" : "10B981"; // Bleu pour étudiants, vert pour encadreurs
-    const encodedName = encodeURIComponent(name || "User");
-    
-    return {
-      primary: `https://ui-avatars.com/api/?name=${encodedName}&background=${backgroundColor}&color=fff&size=40`,
-      fallback: `data:image/svg+xml;base64,${btoa(`
-        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
-          <rect width="40" height="40" fill="#${backgroundColor}"/>
-          <text x="20" y="25" font-family="Arial" font-size="14" fill="white" text-anchor="middle">${initials}</text>
-        </svg>
-      `)}`
-    };
-  };
-
-  const normalize = (str) => {
-    if (!str) return "";
-    return str
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  };
-
+  // NOUVEAU : Récupérer les informations de l'admin depuis localStorage
   useEffect(() => {
+    // Récupérer les données admin depuis localStorage (comme dans parametreAdmin.jsx)
+    const loggedInUser = JSON.parse(localStorage.getItem("user"));
+    const role = localStorage.getItem("role");
+
+    if (loggedInUser && role === "admin") {
+      setAdminName(loggedInUser.Nom || "Admin");
+      setAdminAvatar(loggedInUser.Avatar || "");
+    }
+
     if (window.feather) window.feather.replace();
     if (window.AOS) window.AOS.init();
 
@@ -64,31 +91,26 @@ function AdminUsers() {
         console.log("✅ Étudiants récupérés:", etudiantsRes.data);
         console.log("✅ Encadreurs récupérés:", encadreursRes.data);
 
-        const etudiants = etudiantsRes.data.map((e) => {
-          const avatar = generateAvatar(e.Nom, "Étudiant", e.Immatricule);
-          return {
-            id: e.Immatricule,
-            nom: e.Nom || "",
-            email: e.Email || "",
-            role: "Étudiant",
-            avatar: avatar.primary,
-            avatarFallback: avatar.fallback,
-            originalData: e,
-          };
-        });
+        // MODIFIÉ : On traite les étudiants pour inclure leur avatar de la BDD
+        const etudiants = etudiantsRes.data.map((e) => ({
+          id: e.Immatricule,
+          nom: e.Nom || "",
+          email: e.Email || "",
+          role: "Étudiant",
+          // On utilise l'avatar de la BDD, sinon on génère un fallback
+          avatar: getAvatarUrl(e, "Étudiant") || generateFallbackAvatar(e.Nom, "Étudiant"),
+          originalData: e,
+        }));
 
-        const encadreurs = encadreursRes.data.map((e) => {
-          const avatar = generateAvatar(e.Nom, "Encadreur", e.Matricule);
-          return {
-            id: e.Matricule,
-            nom: e.Nom || "",
-            email: e.Email || "",
-            role: "Encadreur",
-            avatar: avatar.primary,
-            avatarFallback: avatar.fallback,
-            originalData: e,
-          };
-        });
+        // MODIFIÉ : On traite les encadreurs pour inclure leur avatar de la BDD
+        const encadreurs = encadreursRes.data.map((e) => ({
+          id: e.Matricule,
+          nom: e.Nom || "",
+          email: e.Email || "",
+          role: "Encadreur",
+          avatar: getAvatarUrl(e, "Encadreur") || generateFallbackAvatar(e.Nom, "Encadreur"),
+          originalData: e,
+        }));
 
         setUsers([...etudiants, ...encadreurs]);
         console.log(
@@ -156,6 +178,13 @@ function AdminUsers() {
     setSearch("");
   };
 
+  // NOUVEAU : Fonction de déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    window.location.href = "/";
+  };
+
   // Test de connexion serveur
   const testServerConnection = async () => {
     try {
@@ -220,16 +249,25 @@ function AdminUsers() {
     }
   };
 
-  // Composant Avatar avec fallback
+  // NOUVEAU : Composant Avatar intelligent avec gestion d'erreur
   const Avatar = ({ user }) => {
-    const [imgError, setImgError] = useState(false);
+    const [imgSrc, setImgSrc] = useState(user.avatar);
+
+    // Si l'image ne se charge pas, on utilise le fallback
+    const handleError = () => {
+      setImgSrc(generateFallbackAvatar(user.nom, user.role));
+    };
+
+    useEffect(() => {
+      setImgSrc(user.avatar); // Mettre à jour si l'utilisateur change
+    }, [user.avatar]);
 
     return (
       <img
         className="h-10 w-10 rounded-full object-cover border-2 border-gray-200"
-        src={imgError ? user.avatarFallback : user.avatar}
+        src={imgSrc}
         alt={`Avatar de ${user.nom}`}
-        onError={() => setImgError(true)}
+        onError={handleError}
         loading="lazy"
       />
     );
@@ -245,7 +283,7 @@ function AdminUsers() {
               <i data-feather="book-open" className="h-8 w-8"></i>
               <div className="hidden md:block ml-10 space-x-4">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
-                  Gestion de Projet - Admin
+                  Gestion des utilisateurs - Admin
                 </p>
               </div>
             </div>
@@ -272,11 +310,14 @@ function AdminUsers() {
         {/* Sidebar */}
         <aside className="bg-white w-64 min-h-screen border-r hidden md:block">
           <div className="p-4 border-b flex items-center">
-            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-              A
-            </div>
+            {/* MODIFIÉ : Avatar dynamique de l'admin depuis localStorage */}
+            <img
+              className="h-10 w-10 rounded-full object-cover"
+              src={adminAvatar && !adminAvatar.startsWith('http') ? `http://localhost:5000${adminAvatar}` : (adminAvatar || "https://ui-avatars.com/api/?name=AD&background=A9A9A9&color=fff")}
+              alt="Avatar Admin"
+            />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">Admin</p>
+              <p className="text-sm font-medium text-gray-700">{adminName}</p>
               <p className="text-xs text-gray-500">Administrateur</p>
             </div>
           </div>
@@ -294,6 +335,14 @@ function AdminUsers() {
               <i data-feather="settings" className="mr-3 h-5 w-5"></i>{" "}
               Paramètres
             </Link>
+            {/* NOUVEAU : Bouton de déconnexion */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 text-gray-600 transition-colors w-full text-left"
+            >
+              <i data-feather="log-out" className="mr-3 h-5 w-5"></i>{" "}
+              Déconnexion
+            </button>
           </nav>
         </aside>
 

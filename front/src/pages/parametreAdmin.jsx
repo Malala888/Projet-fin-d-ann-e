@@ -137,6 +137,13 @@ function AdminSettings() {
     }
   };
 
+  // NOUVEAU : Fonction de déconnexion
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+    window.location.href = "/";
+  };
+
   return (
     <div className="bg-gray-50 font-sans">
       {/* Navbar */}
@@ -175,6 +182,14 @@ function AdminSettings() {
             <Link to="/admin/setting" className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700">
               <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
             </Link>
+            {/* NOUVEAU : Bouton de déconnexion */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-red-50 hover:text-red-700 text-gray-600 transition-colors w-full text-left"
+            >
+              <i data-feather="log-out" className="mr-3 h-5 w-5"></i>{" "}
+              Déconnexion
+            </button>
           </nav>
         </aside>
 
