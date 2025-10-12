@@ -946,18 +946,58 @@ app.put("/admin/:id", async (req, res) => {
   }
 });
 
-app.put("/admin/:id/password", async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+// POST pour mettre à jour la photo de profil d'un admin
+app.post("/admin/:id/photo", upload.single("avatar"), async (req, res) => {
+  const adminId = req.params.id;
+
+  console.log(`🖼️ Requête de mise à jour photo reçue pour l'admin ID: ${adminId}`);
+
+  if (!req.file) {
+    console.error(`❌ Aucun fichier reçu pour l'admin ${adminId}`);
+    return res.status(400).json({ error: "Aucun fichier n'a été envoyé." });
+  }
+
+  // Construire le chemin d'accès qui sera stocké en BDD
+  const avatarPath = `/uploads/${req.file.filename}`;
+  console.log(`✨ Nouveau chemin pour l'avatar: ${avatarPath}`);
+
   try {
-    const [rows] = await pool.query("SELECT Mot_de_passe FROM admin WHERE Id_admin=?", [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: "Admin introuvable" });
-    if (rows[0].Mot_de_passe !== currentPassword) return res.status(401).json({ error: "Mot de passe actuel incorrect" });
-    await pool.query("UPDATE admin SET Mot_de_passe=? WHERE Id_admin=?", [newPassword, req.params.id]);
-    res.json({ message: "Mot de passe mis à jour" });
+    // Mettre à jour le chemin de l'avatar dans la base de données
+    const [result] = await pool.query(
+      "UPDATE admin SET Avatar = ? WHERE Id_admin = ?",
+      [avatarPath, adminId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Admin non trouvé." });
+    }
+
+    console.log(`✅ Avatar de l'admin ${adminId} mis à jour dans la base de données.`);
+
+    // Renvoyer le chemin de la nouvelle image pour que le frontend puisse l'utiliser
+    res.json({
+      message: "Avatar mis à jour avec succès",
+      avatarPath: avatarPath,
+    });
+
   } catch (err) {
-    res.status(500).json({ error: "Erreur update mot de passe" });
+    console.error("❌ Erreur lors de la mise à jour de l'avatar :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la mise à jour.", details: err.message });
   }
 });
+
+app.put("/admin/:id/password", async (req, res) => {
+   const { currentPassword, newPassword } = req.body;
+   try {
+     const [rows] = await pool.query("SELECT Mot_de_passe FROM admin WHERE Id_admin=?", [req.params.id]);
+     if (rows.length === 0) return res.status(404).json({ error: "Admin introuvable" });
+     if (rows[0].Mot_de_passe !== currentPassword) return res.status(401).json({ error: "Mot de passe actuel incorrect" });
+     await pool.query("UPDATE admin SET Mot_de_passe=? WHERE Id_admin=?", [newPassword, req.params.id]);
+     res.json({ message: "Mot de passe mis à jour" });
+   } catch (err) {
+     res.status(500).json({ error: "Erreur update mot de passe" });
+   }
+ });
 
 // ------------------- ROUTE DE SANTÉ -------------------
 app.get("/health", (req, res) => {
