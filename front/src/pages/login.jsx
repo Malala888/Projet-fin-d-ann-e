@@ -29,19 +29,22 @@ function Login() {
       });
 
       console.log("Connexion réussie :", res.data);
-      
+      console.log("🔍 Debug - Role reçu:", res.data.role);
+
       // 💾 Stockage des données de l'utilisateur et de son rôle dans le localStorage
       // Ces données incluent l'ID (Immatricule, Matricule, Id_admin)
       localStorage.setItem("user", JSON.stringify(res.data.user));
       localStorage.setItem("role", res.data.role);
 
+      console.log("💾 Debug - Données stockées dans localStorage");
+
       // ➡️ Redirection selon le rôle de l'utilisateur
       if (res.data.role === "encadreur") {
-        window.location.href = "http://localhost:3001/index";
+        window.location.href = "/index";
       } else if (res.data.role === "etudiant") {
-        window.location.href = "http://localhost:3001/dashboard";
+        window.location.href = "/dashboard";
       } else if (res.data.role === "admin") {
-        window.location.href = "http://localhost:3001/admin/users";
+        window.location.href = "/admin/users";
       }
     } catch (err) {
       console.error("Erreur de connexion :", err);

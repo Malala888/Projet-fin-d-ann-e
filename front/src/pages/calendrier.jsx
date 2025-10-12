@@ -1,5 +1,5 @@
 // src/pages/Calendrier.jsx
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -45,20 +45,44 @@ const calendarStyles = `
 
 const Calendrier = () => {
   const calendarRef = useRef(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     AOS.init({ duration: 600 });
     feather.replace();
-    
+
     // Inject custom styles for FullCalendar
     const styleSheet = document.createElement('style');
     styleSheet.textContent = calendarStyles;
     document.head.appendChild(styleSheet);
-    
+
+    // Récupérer les données utilisateur du localStorage
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+
+    console.log("🔍 Debug - userData:", userData);
+    console.log("🔍 Debug - userRole:", userRole);
+
+    if (userData && userRole === "encadreur") {
+      console.log("✅ Utilisateur encadreur autorisé à voir le calendrier");
+      setUser(JSON.parse(userData));
+    } else {
+      console.log("❌ Pas d'utilisateur autorisé, redirection vers login");
+      // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un encadreur
+      window.location.href = "/login";
+    }
+
     return () => {
       document.head.removeChild(styleSheet);
     };
   }, []);
+
+  // useEffect séparé pour gérer les icônes après le rendu
+  useEffect(() => {
+    if (window.feather) {
+      window.feather.replace();
+    }
+  });
 
   const handleEventClick = (info) => {
     alert(`Événement : ${info.event.title}`);
@@ -76,6 +100,18 @@ const Calendrier = () => {
     alert("Réunion planifiée avec succès !");
     closeModal();
   };
+
+  // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen font-sans">
@@ -99,10 +135,10 @@ const Calendrier = () => {
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/1"
+                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
                   alt="Profile"
                 />
-                <span className="ml-2 text-sm font-medium">John Doe</span>
+                <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
@@ -116,12 +152,12 @@ const Calendrier = () => {
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src="http://static.photos/people/200x200/1"
+              src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
               alt=""
             />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">John Doe</p>
-              <p className="text-xs text-gray-500">Enseignant</p>
+              <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
+              <p className="text-xs text-gray-500">{user?.Titre || "Encadreur"}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">

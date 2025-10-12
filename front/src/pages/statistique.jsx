@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom"; // ✅ RAJOUTÉ LES IMPORT
 
 const StatisticsDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('Ce mois-ci');
+  const [user, setUser] = useState(null);
   const progressChartRef = useRef(null);
   const deliverablesChartRef = useRef(null);
   const studentsChartRef = useRef(null);
@@ -18,6 +19,22 @@ const StatisticsDashboard = () => {
   };
 
   useEffect(() => {
+    // Récupérer les données utilisateur du localStorage
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+
+    console.log("🔍 Debug - userData:", userData);
+    console.log("🔍 Debug - userRole:", userRole);
+
+    if (userData && userRole === "encadreur") {
+      console.log("✅ Utilisateur encadreur autorisé à voir les statistiques");
+      setUser(JSON.parse(userData));
+    } else {
+      console.log("❌ Pas d'utilisateur autorisé, redirection vers login");
+      // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un encadreur
+      window.location.href = "/login";
+    }
+
     const initializeCharts = () => {
       if (typeof window !== 'undefined' && window.Chart) {
         const Chart = window.Chart;
@@ -254,6 +271,28 @@ const StatisticsDashboard = () => {
     if (window.feather) window.feather.replace();
   }, []);
 
+  // useEffect séparé pour gérer les icônes après le rendu
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (window.feather) {
+        window.feather.replace();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 font-sans min-h-screen">
       {/* Navbar - IDENTIQUE à Index.js */}
@@ -276,10 +315,10 @@ const StatisticsDashboard = () => {
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/1"
+                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
                   alt="Profile"
                 />
-                <span className="ml-2 text-sm font-medium">John Doe</span>
+                <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
@@ -293,12 +332,12 @@ const StatisticsDashboard = () => {
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src="http://static.photos/people/200x200/1"
+              src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
               alt=""
             />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">John Doe</p>
-              <p className="text-xs text-gray-500">Enseignant</p>
+              <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
+              <p className="text-xs text-gray-500">{user?.Titre || "Encadreur"}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">

@@ -1,8 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 function Etudiant() {
   const location = useLocation();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     // Feather icons (depuis le CDN déjà chargé dans index.html)
@@ -13,13 +14,49 @@ function Etudiant() {
     if (window.AOS) {
       window.AOS.init();
     }
+
+    // Récupérer les données utilisateur du localStorage
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+
+    console.log("🔍 Debug - userData:", userData);
+    console.log("🔍 Debug - userRole:", userRole);
+
+    if (userData && userRole === "encadreur") { // On vérifie si c'est un encadreur
+      console.log("✅ Utilisateur encadreur autorisé à voir la liste des étudiants");
+      setUser(JSON.parse(userData));
+    } else {
+      console.log("❌ Pas d'utilisateur autorisé, redirection vers login");
+      // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un encadreur
+      window.location.href = "/login";
+    }
   }, []);
+
+  // useEffect séparé pour gérer les icônes après le rendu
+  useEffect(() => {
+    if (window.feather) {
+      window.feather.replace();
+    }
+  });
+
 
   const isActive = (path) => {
     return location.pathname === path
       ? "bg-blue-50 text-blue-700"
       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
   };
+
+  // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 font-sans">
@@ -43,10 +80,10 @@ function Etudiant() {
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/1"
+                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
                   alt=""
                 />
-                <span className="ml-2 text-sm font-medium">John Doe</span>
+                <span className="ml-2 text-sm font-medium">{user?.Nom || "Étudiant"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
@@ -60,12 +97,12 @@ function Etudiant() {
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src="http://static.photos/people/200x200/1"
+              src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
               alt=""
             />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">John Doe</p>
-              <p className="text-xs text-gray-500">Enseignant</p>
+              <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
+              <p className="text-xs text-gray-500">{user?.Titre || "Encadreur"}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">
@@ -195,8 +232,7 @@ function Etudiant() {
                   <td className="px-6 py-4">
                     <button
                       onClick={() =>
-                        (window.location.href =
-                          "http://localhost:3001/etudiant_detail")
+                        (window.location.href = "/etudiant_detail")
                       }
                       className="text-blue-600 hover:text-blue-900"
                     >
@@ -230,8 +266,7 @@ function Etudiant() {
                   <td className="px-6 py-4">
                     <button
                       onClick={() =>
-                        (window.location.href =
-                          "http://localhost:3001/etudiant_detail")
+                        (window.location.href = "/etudiant_detail")
                       }
                       className="text-blue-600 hover:text-blue-900"
                     >

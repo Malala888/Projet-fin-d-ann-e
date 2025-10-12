@@ -3,13 +3,38 @@ import { Link, useLocation } from "react-router-dom"; // si tu n'utilises pas re
 
 function Index() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
   const location = useLocation(); // ✅ récupérer l'objet location
 
   useEffect(() => {
     // init feather (CDN) et AOS (CDN) si disponibles
     if (window.feather) window.feather.replace();
     if (window.AOS) window.AOS.init();
+
+    // Récupérer les données utilisateur du localStorage
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+
+    console.log("🔍 Debug - userData:", userData);
+    console.log("🔍 Debug - userRole:", userRole);
+
+    if (userData && userRole === "encadreur") {
+      console.log("✅ Utilisateur encadreur connecté");
+      setUser(JSON.parse(userData));
+    } else {
+      console.log("❌ Pas d'utilisateur encadreur connecté, redirection vers login");
+      // Rediriger vers la page de login si pas d'utilisateur connecté ou rôle incorrect
+      window.location.href = "/login";
+    }
   }, []);
+
+  // useEffect séparé pour gérer les icônes après le rendu
+  useEffect(() => {
+    if (window.feather) {
+      window.feather.replace();
+    }
+  });
+
 
   // ⚡ Ajoute ça juste avant return
   const isActive = (path) => {
@@ -17,6 +42,18 @@ function Index() {
       ? "bg-blue-50 text-blue-700"
       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
   };
+
+  // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 font-sans min-h-screen">
@@ -73,10 +110,10 @@ function Index() {
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/1"
+                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
                   alt="Profile"
                 />
-                <span className="ml-2 text-sm font-medium">John Doe</span>
+                <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
@@ -95,8 +132,8 @@ function Index() {
                       alt=""
                     />
                     <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-700">John Doe</p>
-                      <p className="text-xs text-gray-500">Enseignant</p>
+                      <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
+                      <p className="text-xs text-gray-500">{user?.Titre || "Encadreur"}</p>
                     </div>
                   </div>
                   <nav className="p-4 space-y-1">

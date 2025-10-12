@@ -1,5 +1,5 @@
 // src/pages/livrable.jsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import feather from "feather-icons";
@@ -7,10 +7,35 @@ import feather from "feather-icons";
 import { Link } from "react-router-dom";
 
 const Livrable = () => {
+  const [user, setUser] = useState(null);
+
   useEffect(() => {
     AOS.init();
     feather.replace();
+
+    // Récupérer les données utilisateur du localStorage
+    const userData = localStorage.getItem("user");
+    const userRole = localStorage.getItem("role");
+
+    console.log("🔍 Debug - userData:", userData);
+    console.log("🔍 Debug - userRole:", userRole);
+
+    if (userData && userRole === "encadreur") {
+      console.log("✅ Utilisateur encadreur autorisé à voir les livrables");
+      setUser(JSON.parse(userData));
+    } else {
+      console.log("❌ Pas d'utilisateur autorisé, redirection vers login");
+      // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un encadreur
+      window.location.href = "/login";
+    }
   }, []);
+
+  // useEffect séparé pour gérer les icônes après le rendu
+  useEffect(() => {
+    if (window.feather) {
+      window.feather.replace();
+    }
+  });
 
   const livrables = [
     {
@@ -65,6 +90,18 @@ const Livrable = () => {
     return `px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${colors[color]}`;
   };
 
+  // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 font-sans min-h-screen">
       {/* Navbar */}
@@ -87,10 +124,10 @@ const Livrable = () => {
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src="http://static.photos/people/200x200/1"
+                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
                   alt="Profil"
                 />
-                <span className="ml-2 text-sm font-medium">John Doe</span>
+                <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
@@ -104,12 +141,12 @@ const Livrable = () => {
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src="http://static.photos/people/200x200/1"
+              src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
               alt="Profil"
             />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">John Doe</p>
-              <p className="text-xs text-gray-500">Enseignant</p>
+              <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
+              <p className="text-xs text-gray-500">{user?.Titre || "Encadreur"}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">
