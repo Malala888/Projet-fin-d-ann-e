@@ -1,34 +1,40 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import AOS from "aos";
+import "aos/dist/aos.css";
+import feather from "feather-icons";
+import axios from "axios";
 
-function Etudiant() {
-  const location = useLocation();
+const Etudiant = () => {
   const [user, setUser] = useState(null);
+  const [etudiants, setEtudiants] = useState([]);
+  const [loading, setLoading] = useState(true); // RÉ-AJOUT de l'état de chargement
+  const location = useLocation();
 
   useEffect(() => {
-    // Feather icons (depuis le CDN déjà chargé dans index.html)
-    if (window.feather) {
-      window.feather.replace();
-    }
-    // AOS animations (depuis le CDN)
-    if (window.AOS) {
-      window.AOS.init();
-    }
-
-    // Récupérer les données utilisateur du localStorage
+    AOS.init();
+    
     const userData = localStorage.getItem("user");
-    const userRole = localStorage.getItem("role");
+    if (userData) {
+      const userInfo = JSON.parse(userData);
+      setUser(userInfo);
 
-    console.log("🔍 Debug - userData:", userData);
-    console.log("🔍 Debug - userRole:", userRole);
-
-    if (userData && userRole === "encadreur") { // On vérifie si c'est un encadreur
-      console.log("✅ Utilisateur encadreur autorisé à voir la liste des étudiants");
-      setUser(JSON.parse(userData));
+      if (userInfo && userInfo.Matricule) {
+        axios.get(`http://localhost:5000/encadreurs/${userInfo.Matricule}/etudiants`)
+          .then(response => {
+            setEtudiants(response.data);
+            setLoading(false); // Mettre à jour l'état de chargement
+          })
+          .catch(error => {
+            console.error("Erreur lors du chargement des étudiants:", error);
+            setLoading(false); // Mettre à jour même en cas d'erreur
+          });
+      } else {
+        // Rediriger si l'utilisateur n'est pas valide
+        window.location.href = "/";
+      }
     } else {
-      console.log("❌ Pas d'utilisateur autorisé, redirection vers login");
-      // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un encadreur
-      window.location.href = "/login";
+        window.location.href = "/";
     }
   }, []);
 
@@ -58,6 +64,7 @@ function Etudiant() {
     );
   }
 
+
   return (
     <div className="bg-gray-50 font-sans">
       {/* Navbar */}
@@ -65,7 +72,8 @@ function Etudiant() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <i data-feather="book-open" className="h-8 w-8"></i>
+              <img src="/icons/logo-icon.svg" alt="Logo" className="h-8 w-8" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="book-open" className="h-8 w-8" style={{display: 'none'}}></i>
               <div className="hidden md:block ml-10 space-x-4">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
                   Gestion de Projet
@@ -74,14 +82,18 @@ function Etudiant() {
             </div>
             <div className="hidden md:flex items-center space-x-4">
               <button className="p-1 rounded-full text-blue-200 hover:text-white relative">
-                <i data-feather="bell"></i>
+                <img src="/icons/notification-icon.svg" alt="Notifications" className="h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                <i data-feather="bell" style={{display: 'none'}}></i>
                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
               </button>
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
-                  src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
+                  src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/1"}
                   alt=""
+                  onError={(e) => {
+                    e.target.src = "http://static.photos/people/200x200/1";
+                  }}
                 />
                 <span className="ml-2 text-sm font-medium">{user?.Nom || "Étudiant"}</span>
                 <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
@@ -97,8 +109,11 @@ function Etudiant() {
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src={user?.Image ? `${user.Image}` : "http://static.photos/people/200x200/1"}
+              src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/1"}
               alt=""
+              onError={(e) => {
+                e.target.src = "http://static.photos/people/200x200/1";
+              }}
             />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
@@ -112,7 +127,8 @@ function Etudiant() {
                 "/index"
               )}`}
             >
-              <i data-feather="home" className="mr-3 h-5 w-5"></i> Dashboard
+              <img src="/icons/dashboard-icon.svg" alt="Dashboard" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="home" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Dashboard
             </Link>
             <Link
               to="/etudiant"
@@ -120,7 +136,8 @@ function Etudiant() {
                 "/etudiant"
               )}`}
             >
-              <i data-feather="users" className="mr-3 h-5 w-5"></i> Étudiants
+              <img src="/icons/students-icon.svg" alt="Étudiants" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="users" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Étudiants
             </Link>
             <Link
               to="/projet"
@@ -128,7 +145,8 @@ function Etudiant() {
                 "/projet"
               )}`}
             >
-              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Projets
+              <img src="/icons/projects-icon.svg" alt="Projets" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="briefcase" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Projets
             </Link>
             <Link
               to="/calendrier"
@@ -136,7 +154,8 @@ function Etudiant() {
                 "/calendrier"
               )}`}
             >
-              <i data-feather="calendar" className="mr-3 h-5 w-5"></i>{" "}
+              <img src="/icons/calendar-icon.svg" alt="Calendrier" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="calendar" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
               Calendrier
             </Link>
             <Link
@@ -145,7 +164,8 @@ function Etudiant() {
                 "/livrable"
               )}`}
             >
-              <i data-feather="file-text" className="mr-3 h-5 w-5"></i>{" "}
+              <img src="/icons/deliverables-icon.svg" alt="Livrables" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="file-text" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
               Livrables
             </Link>
             <Link
@@ -154,7 +174,8 @@ function Etudiant() {
                 "/statistique"
               )}`}
             >
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i>{" "}
+              <img src="/icons/statistics-icon.svg" alt="Statistiques" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
               Statistiques
             </Link>
 
@@ -169,7 +190,8 @@ function Etudiant() {
                     "/parametre"
                   )}`}
                 >
-                  <i data-feather="settings" className="mr-3 h-5 w-5"></i>
+                  <img src="/icons/settings-icon.svg" alt="Paramètres" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                  <i data-feather="settings" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>
                   Paramètres
                 </Link>
               </div>
@@ -177,106 +199,41 @@ function Etudiant() {
           </nav>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 p-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">
-            Liste des étudiants encadrés
-          </h1>
-          <div className="overflow-x-auto bg-white shadow rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Étudiant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Projet
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Niveau
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Avancement
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 flex items-center">
-                    <img
-                      className="h-10 w-10 rounded-full"
-                      src="http://static.photos/people/200x200/2"
-                      alt=""
-                    />
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        Jean Dupont
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        jean.dupont@eni.fr
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    Système de gestion académique
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-                      M1
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">65%</td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() =>
-                        (window.location.href = "/etudiant_detail")
-                      }
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Détails
-                    </button>
-                  </td>
-                </tr>
-                <tr className="hover:bg-gray-50">
-                  <td className="px-6 py-4 flex items-center">
-                    <img
-                      className="h-10 w-10 rounded-full"
-                      src="http://static.photos/people/200x200/3"
-                      alt=""
-                    />
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        Marie Martin
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        marie.martin@eni.fr
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">Plateforme e-learning</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded bg-green-100 text-green-700 text-xs">
-                      L1
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">40%</td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() =>
-                        (window.location.href = "/etudiant_detail")
-                      }
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Détails
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">Liste des Étudiants Encadrés</h1>
+
+          {/* MODIFICATION : Gérer l'état de chargement */}
+          {loading ? (
+             <div className="text-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">Chargement des étudiants...</p>
+             </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {etudiants.length > 0 ? (
+              etudiants.map((etudiant) => (
+                <div key={etudiant.Immatricule} className="bg-white shadow rounded-lg p-4 text-center transform hover:scale-105 transition-transform duration-200">
+                  <img
+                    className="h-24 w-24 rounded-full mx-auto mb-3 object-cover"
+                    src={etudiant.Image ? `http://localhost:5000${etudiant.Image}` : "http://placehold.it/200x200"}
+                    alt={`Profil de ${etudiant.Nom}`}
+                  />
+                  <h3 className="text-md font-semibold text-gray-800">{etudiant.Nom}</h3>
+                  <p className="text-sm text-gray-500">{etudiant.Parcours} - {etudiant.Niveau}</p>
+                  {etudiant.Nom_equipe && <p className="text-xs text-blue-600 mt-1">Équipe: {etudiant.Nom_equipe}</p>}
+                  <Link
+                    to={`/etudiant/${etudiant.Immatricule}`}
+                    className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700"
+                  >
+                    Voir Détails
+                  </Link>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 col-span-full">Vous n'encadrez aucun étudiant pour le moment.</p>
+            )}
           </div>
+          )}
         </main>
       </div>
     </div>

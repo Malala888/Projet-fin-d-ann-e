@@ -8,6 +8,8 @@ const ProjectDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [etudiant, setEtudiant] = useState(null);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
   const [projet, setProjet] = useState(null);
   const [livrables, setLivrables] = useState([]);
   const [membresEquipe, setMembresEquipe] = useState([]);
@@ -21,15 +23,21 @@ const ProjectDetails = () => {
     const storedUser = localStorage.getItem("user");
     const storedRole = localStorage.getItem("role");
 
-    if (!storedUser || storedRole !== "etudiant") {
+    if (!storedUser || (storedRole !== "etudiant" && storedRole !== "encadreur")) {
       navigate("/login");
       return;
     }
 
+    // Définir le rôle dans l'état
+    setRole(storedRole);
+
     const fetchData = async () => {
       try {
         const userData = JSON.parse(storedUser);
-        if (isMounted) setEtudiant(userData);
+        if (isMounted) {
+          setEtudiant(userData);
+          setUser(userData);
+        }
 
         // 1. Récupérer les détails principaux du projet
         const projetResponse = await axios.get(`http://localhost:5000/projets/${id}`);
@@ -166,9 +174,9 @@ const ProjectDetails = () => {
             />
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-700">
-                {etudiant.Nom}
+                {role === "encadreur" ? user?.Nom : etudiant?.Nom}
               </p>
-              <p className="text-xs text-gray-500">Étudiant M1</p>
+              <p className="text-xs text-gray-500">{role === "encadreur" ? (user?.Titre || "Encadreur") : "Étudiant M1"}</p>
             </div>
           </div>
           <nav className="p-4 space-y-1">

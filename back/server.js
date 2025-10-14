@@ -239,10 +239,44 @@ app.get("/equipes", async (req, res) => {
 
 app.get("/etudiants/:id", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM etudiant WHERE Immatricule = ?", [req.params.id]);
-    if (rows.length === 0) return res.status(404).json({ error: "Étudiant introuvable" });
-    res.json(rows[0]);
-  } catch {
+    const etudiantId = req.params.id;
+
+    // Récupérer les informations de l'étudiant et de son équipe
+    const [etudiantRows] = await pool.query(
+      `SELECT e.*, eq.Nom_equipe
+       FROM etudiant e
+       LEFT JOIN equipe eq ON e.Id_equipe = eq.Id_equipe
+       WHERE e.Immatricule = ?`,
+      [etudiantId]
+    );
+
+    if (etudiantRows.length === 0) {
+      return res.status(404).json({ error: "Étudiant introuvable" });
+    }
+
+    // Récupérer les projets de l'étudiant (individuels ou via son équipe)
+    let projetRows = [];
+    try {
+      const [result] = await pool.query(
+        `SELECT p.*, e.Nom as Nom_encadreur, e.Titre as Titre_encadreur
+         FROM projet p
+         JOIN encadreur e ON p.Id_encadreur = e.Matricule
+         WHERE p.Id_etudiant = ? OR p.Id_equipe = ?`,
+        [etudiantId, etudiantRows[0].Id_equipe]
+      );
+      projetRows = result;
+    } catch (projetError) {
+      console.error(`Erreur projets pour ${etudiantId}:`, projetError);
+      projetRows = [];
+    }
+
+    // Retourner la structure attendue par le frontend
+    res.json({
+      details: etudiantRows[0],
+      projets: projetRows,
+    });
+  } catch (err) {
+    console.error("Erreur récupération étudiant:", err);
     res.status(500).json({ error: "Erreur récupération étudiant" });
   }
 });
@@ -715,24 +749,22 @@ app.post("/etudiants/:id/photo", upload.single("photo"), async (req, res) => {
 
     console.log(`✅ Base de données mise à jour. Lignes affectées: ${result.affectedRows}`);
 
-    // Vérifier la mise à jour en relisant la base de données
-    const [updatedCheck] = await pool.query(
-      "SELECT Image FROM etudiant WHERE Immatricule = ?",
+    // Récupérer l'utilisateur complet mis à jour depuis la base de données
+    const [updatedUserRows] = await pool.query(
+      "SELECT * FROM etudiant WHERE Immatricule = ?",
       [etudiantId]
     );
 
-    console.log(`🔍 Vérification après mise à jour - Nouvelle image: ${updatedCheck[0].Image}`);
+    if (updatedUserRows.length === 0) {
+      return res.status(404).json({ error: "Étudiant non trouvé après mise à jour." });
+    }
 
-    // Renvoyer le chemin de la nouvelle image pour que le frontend puisse l'utiliser
+    console.log(`✅ Photo de l'étudiant ${etudiantId} mise à jour.`);
+
+    // Renvoyer l'objet utilisateur complet, comme le front-end s'y attend
     res.json({
       message: "Photo de profil mise à jour avec succès",
-      imagePath: imagePath,
-      debug: {
-        etudiantId,
-        ancienneImage: etudiantCheck[0].Image,
-        nouvelleImage: updatedCheck[0].Image,
-        fichier: req.file.filename
-      }
+      user: updatedUserRows[0] // <-- C'est la clé !
     });
 
   } catch (err) {
@@ -974,10 +1006,20 @@ app.post("/admin/:id/photo", upload.single("avatar"), async (req, res) => {
 
     console.log(`✅ Avatar de l'admin ${adminId} mis à jour dans la base de données.`);
 
-    // Renvoyer le chemin de la nouvelle image pour que le frontend puisse l'utiliser
+    // Récupérer l'utilisateur complet mis à jour depuis la base de données
+    const [updatedUserRows] = await pool.query(
+      "SELECT * FROM admin WHERE Id_admin = ?",
+      [adminId]
+    );
+
+    if (updatedUserRows.length === 0) {
+      return res.status(404).json({ error: "Admin non trouvé après mise à jour." });
+    }
+
+    // Renvoyer l'objet utilisateur complet, comme le front-end s'y attend
     res.json({
       message: "Avatar mis à jour avec succès",
-      avatarPath: avatarPath,
+      user: updatedUserRows[0] // <-- C'est la clé !
     });
 
   } catch (err) {
@@ -997,11 +1039,323 @@ app.put("/admin/:id/password", async (req, res) => {
    } catch (err) {
      res.status(500).json({ error: "Erreur update mot de passe" });
    }
- });
+});
+
+// ------------------- ROUTES ENCADREURS -------------------
+app.get("/encadreurs/:id", async (req, res) => {
+  try {
+    const [rows] = await pool.query("SELECT * FROM encadreur WHERE Matricule = ?", [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: "Encadreur introuvable" });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: "Erreur récupération encadreur" });
+  }
+});
+
+app.put("/encadreurs/:matricule", async (req, res) => {
+  const encadreurId = req.params.matricule;
+  const { Nom, Email, Titre, Departement, Bio } = req.body;
+
+  console.log(`📝 Mise à jour du profil pour l'encadreur ID: ${encadreurId}`);
+
+  if (!Nom || !Email) {
+    return res.status(400).json({ error: "Le nom et l'email sont requis." });
+  }
+
+  try {
+    // On met à jour la base de données avec tous les champs disponibles
+    await pool.query(
+      `UPDATE encadreur SET Nom = ?, Email = ?, Titre = ? WHERE Matricule = ?`,
+      [Nom, Email, Titre, encadreurId]
+    );
+
+    // On récupère l'utilisateur complet pour le renvoyer et mettre à jour l'interface
+    const [updatedUserRows] = await pool.query(
+      "SELECT * FROM encadreur WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    console.log(`✅ Profil de l'encadreur ${encadreurId} mis à jour.`);
+    console.log(`📋 Données utilisateur mises à jour:`, updatedUserRows[0]);
+
+    res.json({
+      message: "Profil mis à jour avec succès",
+      user: updatedUserRows[0] // On renvoie l'utilisateur complet mis à jour
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la mise à jour du profil :", err);
+    res.status(500).json({ error: "Erreur serveur", details: err.message });
+  }
+});
+
+app.put("/encadreurs/:matricule/password", async (req, res) => {
+   const { currentPassword, newPassword } = req.body;
+   try {
+     const [rows] = await pool.query("SELECT Mot_de_passe FROM encadreur WHERE Matricule=?", [req.params.matricule]);
+     if (rows.length === 0) return res.status(404).json({ error: "Encadreur introuvable" });
+     if (rows[0].Mot_de_passe !== currentPassword) return res.status(401).json({ error: "Mot de passe actuel incorrect" });
+     await pool.query("UPDATE encadreur SET Mot_de_passe=? WHERE Matricule=?", [newPassword, req.params.matricule]);
+     res.json({ message: "Mot de passe mis à jour" });
+   } catch (err) {
+     res.status(500).json({ error: "Erreur update mot de passe" });
+   }
+});
+
+// POST pour mettre à jour la photo de profil d'un encadreur
+app.post("/encadreurs/:matricule/image", upload.single("image"), async (req, res) => {
+  const encadreurId = req.params.matricule;
+
+  console.log(`🖼️ Requête de mise à jour image reçue pour l'encadreur ID: ${encadreurId}`);
+  console.log(`📎 Fichier reçu:`, req.file ? {
+    filename: req.file.filename,
+    originalname: req.file.originalname,
+    mimetype: req.file.mimetype,
+    size: req.file.size
+  } : 'Aucun fichier');
+
+  if (!req.file) {
+    console.error(`❌ Aucun fichier reçu pour l'encadreur ${encadreurId}`);
+    return res.status(400).json({ error: "Aucun fichier n'a été envoyé." });
+  }
+
+  const imagePath = `/uploads/${req.file.filename}`;
+  console.log(`🖼️ Mise à jour de l'image pour l'encadreur ID: ${encadreurId}. Nouveau chemin: ${imagePath}`);
+
+  try {
+    // Vérifier que l'encadreur existe d'abord
+    const [encadreurCheck] = await pool.query(
+      "SELECT Matricule, Nom, Avatar FROM encadreur WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    if (encadreurCheck.length === 0) {
+      console.error(`❌ Encadreur ${encadreurId} non trouvé`);
+      return res.status(404).json({ error: "Encadreur non trouvé." });
+    }
+
+    console.log(`📋 Encadreur trouvé: ${encadreurCheck[0].Nom}, ancienne image: ${encadreurCheck[0].Avatar}`);
+
+    // Mettre à jour le chemin de l'image dans la base de données
+    const [result] = await pool.query(
+      "UPDATE encadreur SET Avatar = ? WHERE Matricule = ?",
+      [imagePath, encadreurId]
+    );
+
+    if (result.affectedRows === 0) {
+      console.error(`❌ Aucune ligne mise à jour pour l'encadreur ${encadreurId}`);
+      return res.status(404).json({ error: "Encadreur non trouvé." });
+    }
+
+    console.log(`✅ Base de données mise à jour. Lignes affectées: ${result.affectedRows}`);
+
+    // Récupérer l'utilisateur complet mis à jour depuis la base de données
+    const [updatedUserRows] = await pool.query(
+      "SELECT * FROM encadreur WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    if (updatedUserRows.length === 0) {
+      return res.status(404).json({ error: "Utilisateur non trouvé après mise à jour." });
+    }
+
+    console.log(`✅ Image de l'encadreur ${encadreurId} mise à jour.`);
+
+    // Renvoyer l'objet utilisateur complet, comme le front-end s'y attend
+    res.json({
+      message: "Image de profil mise à jour avec succès",
+      user: updatedUserRows[0] // <-- C'est la clé !
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la mise à jour de l'image :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la mise à jour de l'image.", details: err.message });
+  }
+});
+
+// DELETE pour supprimer l'image de profil d'un encadreur
+app.delete("/encadreurs/:matricule/image", async (req, res) => {
+  const encadreurId = req.params.matricule;
+
+  console.log(`🗑️ Suppression de l'image pour l'encadreur ID: ${encadreurId}`);
+
+  try {
+    // Récupérer l'ancienne image avant de la supprimer
+    const [encadreurRows] = await pool.query(
+      "SELECT Avatar FROM encadreur WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    if (encadreurRows.length === 0) {
+      return res.status(404).json({ error: "Encadreur non trouvé." });
+    }
+
+    const ancienneImage = encadreurRows[0].Avatar;
+
+    // Supprimer le fichier physique s'il existe
+    if (ancienneImage) {
+      const filePath = path.join(__dirname, ancienneImage);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`✅ Fichier image supprimé: ${filePath}`);
+      }
+    }
+
+    // Mettre à jour la base de données pour supprimer le chemin de l'image
+    await pool.query(
+      "UPDATE encadreur SET Avatar = NULL WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    // Récupérer l'utilisateur mis à jour
+    const [updatedUserRows] = await pool.query(
+      "SELECT * FROM encadreur WHERE Matricule = ?",
+      [encadreurId]
+    );
+
+    res.json({
+      message: "Image de profil supprimée avec succès",
+      user: updatedUserRows[0]
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la suppression de l'image :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la suppression de l'image.", details: err.message });
+  }
+});
+
+// GET projets d'un encadreur spécifique avec détails des étudiants
+app.get("/encadreurs/:matricule/projets", async (req, res) => {
+  const encadreurId = req.params.matricule;
+  try {
+    console.log(`📋 Récupération des projets pour l'encadreur ${encadreurId}`);
+
+    // Récupérer les projets où l'encadreur supervise avec les informations des étudiants
+    const [projetRows] = await pool.query(
+      `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Status, P.Id_equipe, P.Id_etudiant,
+              E.Nom AS Nom_etudiant, E.Email AS Email_etudiant, E.Niveau AS Niveau_etudiant, E.Filiere AS Filiere_etudiant,
+              EQ.Nom_equipe
+       FROM projet P
+       JOIN etudiant E ON P.Id_etudiant = E.Immatricule
+       LEFT JOIN equipe EQ ON P.Id_equipe = EQ.Id_equipe
+       WHERE P.Id_encadreur = ?
+       ORDER BY CASE
+         WHEN P.Status = 'En cours' THEN 0
+         WHEN P.Status = 'En retard' THEN 1
+         ELSE 2
+       END, P.Date_deb DESC`,
+      [encadreurId]
+    );
+
+    console.log(`✅ ${projetRows.length} projets trouvés pour l'encadreur ${encadreurId}`);
+    res.json(projetRows);
+
+  } catch (err) {
+    console.error("❌ Erreur récupération projets de l'encadreur:", err);
+    res.status(500).json({ error: "Erreur lors de la récupération des projets" });
+  }
+});
+
+// NOUVELLE ROUTE : Obtenir tous les étudiants encadrés par un encadreur spécifique
+app.get("/encadreurs/:matricule/etudiants", async (req, res) => {
+  const { matricule } = req.params;
+  try {
+    const [rows] = await pool.query(
+      `SELECT DISTINCT e.*, eq.Nom_equipe
+       FROM etudiant e
+       LEFT JOIN equipe eq ON e.Id_equipe = eq.Id_equipe
+       JOIN projet p ON e.Immatricule = p.Id_etudiant OR e.Id_equipe = p.Id_equipe
+       WHERE p.Id_encadreur = ?`,
+      [matricule]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Erreur lors de la récupération des étudiants :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// NOUVELLE ROUTE : Obtenir les détails d'un étudiant spécifique
+app.get("/etudiants/:immatricule", async (req, res) => {
+  const { immatricule } = req.params;
+  console.log(`🔍 Récupération des détails pour l'étudiant ${immatricule}`);
+
+  try {
+    // Récupérer les informations de l'étudiant et de son équipe
+    const [etudiantRows] = await pool.query(
+      `SELECT e.*, eq.Nom_equipe
+       FROM etudiant e
+       LEFT JOIN equipe eq ON e.Id_equipe = eq.Id_equipe
+       WHERE e.Immatricule = ?`,
+      [immatricule]
+    );
+
+    if (etudiantRows.length === 0) {
+      console.log(`❌ Étudiant ${immatricule} non trouvé`);
+      return res.status(404).json({ error: "Étudiant non trouvé" });
+    }
+
+    console.log(`✅ Étudiant trouvé: ${etudiantRows[0].Nom}`);
+
+    // Récupérer les projets de l'étudiant (individuels ou via son équipe)
+    let projetRows = [];
+    try {
+      const [result] = await pool.query(
+        `SELECT p.*, e.Nom as Nom_encadreur, e.Titre as Titre_encadreur
+         FROM projet p
+         JOIN encadreur e ON p.Id_encadreur = e.Matricule
+         WHERE p.Id_etudiant = ? OR p.Id_equipe = ?`,
+        [immatricule, etudiantRows[0].Id_equipe]
+      );
+      projetRows = result;
+      console.log(`📋 Projets trouvés pour l'étudiant ${immatricule}:`, projetRows.length);
+    } catch (projetError) {
+      console.error(`❌ Erreur projets pour ${immatricule}:`, projetError);
+      projetRows = [];
+    }
+
+    // Retourner la structure attendue par le frontend
+    res.json({
+      details: etudiantRows[0],
+      projets: projetRows,
+    });
+  } catch (err) {
+    console.error("Erreur lors de la récupération des détails de l'étudiant :", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
 
 // ------------------- ROUTE DE SANTÉ -------------------
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString(), database: "Connected" });
+});
+
+// ------------------- ROUTE DE VÉRIFICATION D'AVATAR -------------------
+app.get("/encadreurs/:matricule/avatar", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT Matricule, Nom, Avatar FROM encadreur WHERE Matricule = ?",
+      [req.params.matricule]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Encadreur non trouvé" });
+    }
+
+    console.log(`🔍 Vérification Avatar - Encadreur ${req.params.matricule}:`);
+    console.log(`   - Nom: ${rows[0].Nom}`);
+    console.log(`   - Avatar actuel: ${rows[0].Avatar}`);
+
+    res.json({
+      matricule: rows[0].Matricule,
+      nom: rows[0].Nom,
+      avatar: rows[0].Avatar,
+      avatarUrl: rows[0].Avatar ? `http://localhost:5000${rows[0].Avatar}` : null
+    });
+  } catch (err) {
+    console.error("❌ Erreur vérification avatar:", err);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
 });
 
 // Gestion des erreurs non capturées

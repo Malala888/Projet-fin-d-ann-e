@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 07 oct. 2025 à 13:05
+-- Généré le : sam. 11 oct. 2025 à 15:08
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -32,15 +32,16 @@ CREATE TABLE `admin` (
   `Email` varchar(100) NOT NULL,
   `Nom` varchar(100) NOT NULL,
   `Mot_de_passe` varchar(255) NOT NULL,
-  `Avatar` varchar(255) DEFAULT 'http://placehold.it/200x200'
+  `Avatar` varchar(255) DEFAULT 'http://placehold.it/200x200',
+  `Image` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `admin`
 --
 
-INSERT INTO `admin` (`Id_admin`, `Email`, `Nom`, `Mot_de_passe`, `Avatar`) VALUES
-(1, 'admin@projetm1.com', 'Admin Principal', 'admin123', 'http://placehold.it/200x200');
+INSERT INTO `admin` (`Id_admin`, `Email`, `Nom`, `Mot_de_passe`, `Avatar`, `Image`) VALUES
+(1, 'admin.test@example.com', 'Admin Test num 1', 'admin123', 'http://placehold.it/200x200', '/uploads/1760187971117-fond.pnj.PNG');
 
 -- --------------------------------------------------------
 
@@ -65,7 +66,9 @@ INSERT INTO `encadreur` (`Matricule`, `Nom`, `Email`, `Titre`, `Mot_de_passe`, `
 (1, 'Dr. Rakoto Jean', 'rakoto.jean@univ.edu', 'Professeur', 'pass123', 'http://placehold.it/200x200'),
 (2, 'Dr. Randria Marie', 'randria.marie@univ.edu', 'Maître de Conf.', 'pass123', 'http://placehold.it/200x200'),
 (3, 'Dr. Andriamanga Paul', 'andriamanga.paul@univ.edu', 'Professeur', 'pass123', 'http://placehold.it/200x200'),
-(4, 'Dr. Rasolo Fara', 'rasolo.fara@univ.edu', 'Assistant', 'pass123', 'http://placehold.it/200x200');
+(4, 'Dr. Rasolo Fara', 'rasolo.fara@univ.edu', 'Assistant', 'pass123', 'http://placehold.it/200x200'),
+(24, 'RASAVOLATAHIANA Sarobidy', 'rakotoarisonmalalanirina301@gmail.com', 'Professeur', '12345Malala', 'http://placehold.it/200x200'),
+(54321, 'Dr. Test', 'dr.test@example.com', 'Professeur', 'test123', 'http://placehold.it/200x200');
 
 -- --------------------------------------------------------
 
@@ -101,7 +104,13 @@ INSERT INTO `equipe` (`Id_equipe`, `Nom_equipe`, `Avatar`) VALUES
 (15, 'sdfgh', 'http://placehold.it/200x200'),
 (16, 'erfg', 'http://placehold.it/200x200'),
 (17, 'fghjk', 'http://placehold.it/200x200'),
-(18, 'GB Grp1', 'http://placehold.it/200x200');
+(18, 'GB Grp1', 'http://placehold.it/200x200'),
+(19, '�quipe Syst�me de recommandation', 'http://placehold.it/200x200'),
+(20, 'Équipe Analyse des données des réseau...', 'http://placehold.it/200x200'),
+(21, 'Équipe Application mobile de gestion ...', 'http://placehold.it/200x200'),
+(22, 'Équipe E-learning...', 'http://placehold.it/200x200'),
+(23, 'Équipe Gestion materiel...', 'http://placehold.it/200x200'),
+(24, 'sdfghvn1', 'http://placehold.it/200x200');
 
 -- --------------------------------------------------------
 
@@ -126,15 +135,17 @@ CREATE TABLE `etudiant` (
 --
 
 INSERT INTO `etudiant` (`Immatricule`, `Nom`, `Email`, `Mot_de_passe`, `Image`, `Filiere`, `Parcours`, `Niveau`, `Id_equipe`) VALUES
-(2, 'Rakotomalala Fanjamalala', 'fanja.rakoto@etud.univ.edu', 'etu123', '????\0JFIF\0\0\0\0\0\0??\0?\0\n\n\n\"\"$$6*&&*6>424>LDDL_Z_||?\n\n\n\"\"$$6*&&*6>424>LDDL_Z_||???\0\0\"\0??\00\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0??\0\0\0\0???\0\0\0*?????\0\0\0', 'Informatique', 'IA', 'M1', 16),
-(3, 'Randrianarisoa Tiana', 'tiana.randria@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'Réseaux', 'M1', 18),
-(4, 'Ramanantsoa Hery', 'hery.ramanantsoa@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M2', 15),
-(5, 'Ratsimba Lova', 'lova.ratsimba@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'IA', 'L3', 17),
-(6, 'Rabenoro Sarobidy', 'sarobidy.rabenoro@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M1', 18),
-(7, 'Rakotoarison Malala', 'malala.rakoto@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'Réseaux', 'M1', 18),
+(2, 'Rakotomalala Fanjamalala', 'fanja.rakoto@etud.univ.edu', 'etu123', '????\0JFIF\0\0\0\0\0\0??\0?\0\n\n\n\"\"$$6*&&*6>424>LDDL_Z_||?\n\n\n\"\"$$6*&&*6>424>LDDL_Z_||???\0\0\"\0??\00\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0??\0\0\0\0???\0\0\0*?????\0\0\0', 'Informatique', 'IA', 'M1', 23),
+(3, 'Randrianarisoa Malalatiana', 'tiana.randria@etud.univ.edu', 'etu123', '/uploads/1760173909461-2396.jpeg', 'Informatique', 'GBBD', 'M1', 23),
+(4, 'Ramanantsoa Hery', 'hery.ramanantsoa@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M2', 22),
+(5, 'Ratsimba Lova', 'lova.ratsimba@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'IA', 'L3', 24),
+(6, 'Rabenoro Sarobidy', 'sarobidy.rabenoro@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M1', NULL),
+(7, 'Rakotoarison Malala', 'malala.rakoto@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'Réseaux', 'M1', 24),
 (8, 'Andriamanana Toky', 'toky.andria@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'IA', 'M2', 4),
 (9, 'Rajaonarivelo Soa', 'soa.rajao@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M1', 17),
-(10, 'Randriamihaja Anjara', 'anjara.randria@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M1', 12);
+(10, 'Randriamihaja Anjara', 'anjara.randria@etud.univ.edu', 'etu123', 'http://placehold.it/200x200', 'Informatique', 'GL', 'M1', NULL),
+(2430, 'RANDRIANIRINA Hasimiora Tatiana', 'tadashiloyce301@gmail.com', '12345Malala', '/uploads/1760181737773-fond.pnj.PNG', 'Informatique', 'GBD', 'M1', NULL),
+(12347, 'Test User', 'test2@example.com', 'test123', 'http://placehold.it/200x200', 'Informatique', 'IA', 'M1', NULL);
 
 -- --------------------------------------------------------
 
@@ -196,15 +207,12 @@ CREATE TABLE `projet` (
 --
 
 INSERT INTO `projet` (`Id_projet`, `Date_deb`, `Date_fin`, `Status`, `Avancement`, `Theme`, `Description`, `Id_etudiant`, `Id_encadreur`, `Id_equipe`) VALUES
-(1, '2025-08-31', '2025-12-15', 'En cours', 20, 'Système de recommandation pour étudiants', 'Développement d\'un moteur de recommandation de cours et ressources.', 3, 2, NULL),
-(2, '2025-09-05', '2025-12-20', 'En cours', 40, 'Analyse des données des réseaux sociaux', 'Projet d\'analyse et visualisation de données provenant de plateformes sociales.', 3, 2, NULL),
-(3, '2025-09-10', '2025-12-30', 'En cours', 10, 'Application mobile de gestion de bibliothèque', 'Créer une application mobile pour gérer le prêt et retour des livres.', 3, 2, NULL),
-(4, '2025-10-05', '2025-11-03', 'En cours', 0, 'E-learning', 'zeqsrtdhyjh', 3, 3, NULL),
+(1, '2025-08-30', '2025-12-14', 'En cours', 20, 'Système de recommandation pour étudiants', 'Développement d\'un moteur de recommandation de cours et ressources.', 3, 2, 19),
+(2, '2025-09-05', '2025-12-20', 'En cours', 40, 'Analyse des données des réseaux sociaux', 'Projet d\'analyse et visualisation de données provenant de plateformes sociales.', 3, 2, 20),
+(3, '2025-09-09', '2025-12-30', 'En cours', 10, 'Application mobile de gestion de bibliothèque', 'Créer une application mobile pour gérer le prêt et retour des livres.', 3, 2, 21),
+(4, '2025-10-05', '2025-11-03', 'En cours', 0, 'E-learning', 'zeqsrtdhyjh', 3, 3, 22),
 (5, '2025-10-07', '2025-11-05', 'En cours', 0, 'qsdfghjkl', 'zeqsrtdhyjh', 5, 3, 17),
-(6, '2025-10-07', '2025-11-05', 'En cours', 0, 'qsdfghjkl', 'zeqsrtdhyjh', 9, 3, 17),
-(7, '2025-10-30', '2025-12-04', 'En cours', 0, 'Gestion materiel', 'Gerer tous les matériaux', 3, 1, NULL),
-(8, '2025-10-31', '2025-12-05', 'En cours', 0, 'Gestion materiel', 'Gerer tous les matériaux', 6, 1, 18),
-(9, '2025-10-31', '2025-12-05', 'En cours', 0, 'Gestion materiel', 'Gerer tous les matériaux', 7, 1, 18);
+(7, '2025-10-29', '2025-12-03', 'En cours', 0, 'Gestion materiel', 'Gérer tous les matériaux dans l\'entreprise', 3, 1, 23);
 
 --
 -- Index pour les tables déchargées
@@ -270,19 +278,19 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT pour la table `encadreur`
 --
 ALTER TABLE `encadreur`
-  MODIFY `Matricule` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `Matricule` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54322;
 
 --
 -- AUTO_INCREMENT pour la table `equipe`
 --
 ALTER TABLE `equipe`
-  MODIFY `Id_equipe` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `Id_equipe` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT pour la table `etudiant`
 --
 ALTER TABLE `etudiant`
-  MODIFY `Immatricule` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `Immatricule` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12348;
 
 --
 -- AUTO_INCREMENT pour la table `livrable`
@@ -294,7 +302,7 @@ ALTER TABLE `livrable`
 -- AUTO_INCREMENT pour la table `projet`
 --
 ALTER TABLE `projet`
-  MODIFY `Id_projet` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `Id_projet` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Contraintes pour les tables déchargées
