@@ -221,7 +221,7 @@ const Projet = () => {
                     <p><strong>Avancement:</strong> {projet.Avancement}%</p>
                   </div>
                   <Link
-                    to={`/projet_detail/${projet.Id_projet}`}
+                    to={`/projet/details/${projet.Id_projet}`}
                     className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700"
                   >
                     Voir Détails

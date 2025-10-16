@@ -14,6 +14,12 @@ const Livrable = () => {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
+  // --- NOUVEAU : États pour les filtres ---
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("Tous les statuts");
+  const [selectedStudent, setSelectedStudent] = useState("Tous les étudiants");
+  const [filteredLivrables, setFilteredLivrables] = useState([]);
+
   useEffect(() => {
     AOS.init();
     feather.replace();
@@ -56,6 +62,37 @@ const Livrable = () => {
       feather.replace();
     }
   }, [loading, livrables]); // Se déclenche après le chargement et la mise à jour des livrables
+
+  // --- NOUVEAU : useEffect pour gérer le filtrage ---
+  useEffect(() => {
+    let result = livrables;
+
+    // 1. Filtrage par recherche
+    if (searchTerm) {
+      result = result.filter(livrable =>
+        (livrable.Titre && livrable.Titre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (livrable.Nom_projet && livrable.Nom_projet.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    // 2. Filtrage par statut
+    if (selectedStatus !== "Tous les statuts") {
+      result = result.filter(livrable => livrable.Status === selectedStatus);
+    }
+
+    // 3. Filtrage par étudiant
+    if (selectedStudent !== "Tous les étudiants") {
+      result = result.filter(livrable => livrable.Nom_etudiant === selectedStudent);
+    }
+
+    setFilteredLivrables(result);
+
+    // Mettre à jour les icônes après le filtrage
+    feather.replace();
+  }, [searchTerm, selectedStatus, selectedStudent, livrables]);
+
+  // Récupérer la liste unique des étudiants pour le filtre
+  const studentNames = [...new Set(livrables.map(l => l.Nom_etudiant))].sort();
 
   // NOUVEAU : Fonction pour déterminer la couleur du statut
   const getStatutClasses = (status) => {
@@ -196,9 +233,6 @@ const Livrable = () => {
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
               Gestion des livrables
             </h1>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center self-start md:self-auto">
-              <i data-feather="plus" className="mr-2 h-4 w-4"></i> Nouveau livrable
-            </button>
           </div>
 
           {/* Filters */}
@@ -211,24 +245,29 @@ const Livrable = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Rechercher un livrable..."
-                    className="w-full pl-10 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    id="search-livrable"
+                    placeholder="Rechercher un livrable ou projet..."
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <i
-                    data-feather="search"
-                    className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                  ></i>
                 </div>
               </div>
               <div className="w-full lg:w-40">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filtrer par statut
                 </label>
-                <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <select
+                  id="filter-status"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                >
                   <option>Tous les statuts</option>
+                  <option>Soumis</option>
                   <option>En attente</option>
                   <option>Validé</option>
-                  <option>En retard</option>
+                  <option>Rejeté</option>
                   <option>À corriger</option>
                 </select>
               </div>
@@ -236,17 +275,17 @@ const Livrable = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filtrer par étudiant
                 </label>
-                <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <select
+                  id="filter-student"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  value={selectedStudent}
+                  onChange={(e) => setSelectedStudent(e.target.value)}
+                >
                   <option>Tous les étudiants</option>
-                  <option>Jean Dupont</option>
-                  <option>Marie Martin</option>
-                  <option>Groupe L1-04</option>
+                  {studentNames.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
                 </select>
-              </div>
-              <div className="flex items-end">
-                <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200">
-                  Appliquer
-                </button>
               </div>
             </div>
           </div>
@@ -255,10 +294,10 @@ const Livrable = () => {
           {/* Elle passe à 1 colonne sur mobile, 2 sur tablette, et 4 sur grand écran */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[
-              { label: "Tous les livrables", value: livrables.length, icon: "file-text", color: "blue" },
-              { label: "En attente", value: livrables.filter(l => l.Status === "En attente").length, icon: "clock", color: "yellow" },
-              { label: "Validés", value: livrables.filter(l => l.Status === "Validé").length, icon: "check-circle", color: "green" },
-              { label: "En retard", value: livrables.filter(l => l.Status === "En retard" || l.Status === "Rejeté").length, icon: "alert-triangle", color: "red" },
+              { label: "Livrables affichés", value: filteredLivrables.length, icon: "file-text", color: "blue" },
+              { label: "En attente", value: filteredLivrables.filter(l => l.Status === "En attente").length, icon: "clock", color: "yellow" },
+              { label: "Validés", value: filteredLivrables.filter(l => l.Status === "Validé").length, icon: "check-circle", color: "green" },
+              { label: "À corriger/Rejetés", value: filteredLivrables.filter(l => l.Status === "À corriger" || l.Status === "Rejeté").length, icon: "alert-triangle", color: "red" },
             ].map((card, i) => (
               <div key={i} className="bg-white rounded-lg shadow p-4 md:p-6">
                 <div className="flex items-center">
@@ -295,8 +334,8 @@ const Livrable = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {livrables.length > 0 ? (
-                    livrables.map((livrable) => (
+                  {filteredLivrables.length > 0 ? (
+                    filteredLivrables.map((livrable) => (
                       <tr key={livrable.Id_livrable} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-start">

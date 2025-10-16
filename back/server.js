@@ -1386,6 +1386,84 @@ app.get("/encadreurs/:matricule/livrables", async (req, res) => {
   }
 });
 
+// ------------------- ROUTES PROJETS - COMPOSANTS -------------------
+// NOUVELLE ROUTE 1: Obtenir l'état des composants d'un projet
+app.get("/projets/:id/composants", async (req, res) => {
+  const projetId = req.params.id;
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM projet_composants WHERE Id_projet = ?",
+      [projetId]
+    );
+
+    if (rows.length > 0) {
+      res.json(rows[0]);
+    } else {
+      // Si aucune entrée n'existe, on renvoie un objet par défaut
+      res.json({
+        Id_projet: projetId,
+        Modelisation: 0,
+        Developpement: 0,
+        UX_UI_Design: 0,
+        Rapport_Projet: 0,
+      });
+    }
+  } catch (err) {
+    console.error("❌ Erreur récupération composants projet:", err);
+    res.status(500).json({ error: "Erreur récupération des composants du projet" });
+  }
+});
+
+// NOUVELLE ROUTE 2: Mettre à jour les composants et l'avancement du projet
+app.put("/projets/:id/composants", async (req, res) => {
+  const projetId = req.params.id;
+  const { Modelisation, Developpement, UX_UI_Design, Rapport_Projet } = req.body;
+
+  // Calcul du nouvel avancement (chaque composant vaut 25%)
+  const avancement = [Modelisation, Developpement, UX_UI_Design, Rapport_Projet]
+    .filter(Boolean) // Garde seulement les 'true' (ou 1)
+    .length * 25;
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Requête 1: Mettre à jour les composants (UPSERT)
+    // Crée la ligne si elle n'existe pas, sinon la met à jour.
+    await connection.query(
+      `
+      INSERT INTO projet_composants (Id_projet, Modelisation, Developpement, UX_UI_Design, Rapport_Projet)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      Modelisation = VALUES(Modelisation),
+      Developpement = VALUES(Developpement),
+      UX_UI_Design = VALUES(UX_UI_Design),
+      Rapport_Projet = VALUES(Rapport_Projet)
+      `,
+      [projetId, Modelisation, Developpement, UX_UI_Design, Rapport_Projet]
+    );
+
+    // Requête 2: Mettre à jour l'avancement dans la table principale 'projet'
+    await connection.query(
+      "UPDATE projet SET Avancement = ? WHERE Id_projet = ?",
+      [avancement, projetId]
+    );
+
+    await connection.commit(); // Valide les deux requêtes
+    connection.release();
+
+    console.log(`✅ Progression du projet ${projetId} mise à jour à ${avancement}%`);
+    res.json({ message: "Progression mise à jour avec succès", avancement });
+
+  } catch (err) {
+    await connection.rollback(); // Annule tout en cas d'erreur
+    connection.release();
+    console.error("❌ Erreur mise à jour progression:", err);
+    res.status(500).json({ error: "Erreur lors de la mise à jour de la progression" });
+  }
+});
+
 // ------------------- ROUTE DE SANTÉ -------------------
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString(), database: "Connected" });

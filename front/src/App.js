@@ -18,6 +18,7 @@ import EtudiantDetail from './pages/etudiantDetail'
 import Creation from './pages/creation'
 import Admin from './pages/admin'
 import ParametreAdmin from'./pages/parametreAdmin'
+import DetailsProjetEncadreur from './pages/DetailsProjetEncadreur'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 
 function App() {
@@ -38,6 +39,7 @@ function App() {
         <Route path='/parametre' element={<Parametre/>} />
         <Route path='/parametre_etudiant' element={<ParametreEtudiant/>} />
         <Route path='/projet_detail/:id' element={<ProjetDetail/>} />
+        <Route path='/projet/details/:id' element={<DetailsProjetEncadreur/>} />
         <Route path='/statistique' element={<Statistique/>} />
         <Route path='/statistique_etudiant' element={<StatistiqueEtudiant/>} />
         <Route path='/etudiant/:immatricule' element={<EtudiantDetail />} />
