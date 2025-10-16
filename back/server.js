@@ -95,7 +95,6 @@ app.post("/login", async (req, res) => {
     return res.status(400).json({ error: "Rôle invalide" });
   }
 
-
   try {
     const [rows] = await pool.query(
       // On s'assure de bien tout sélectionner avec '*'
@@ -116,34 +115,27 @@ app.post("/login", async (req, res) => {
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
-
 // ------------------- ROUTE REGISTER -------------------
 app.post("/register", async (req, res) => {
   const { matricule, nom, email, password, confirmPassword, role, filiere, parcours, niveau, titre } = req.body;
-
   console.log("📝 Tentative d'inscription:", { matricule, nom, email, role });
-
   // Validation des champs requis
   if (!matricule || !nom || !email || !password || !confirmPassword || !role) {
     return res.status(400).json({ error: "Tous les champs sont requis" });
   }
-
   // Validation du mot de passe
   if (password !== confirmPassword) {
     return res.status(400).json({ error: "Les mots de passe ne correspondent pas" });
   }
-
   // Validation du rôle
   if (!["etudiant", "encadreur"].includes(role)) {
     return res.status(400).json({ error: "Rôle invalide" });
   }
-
   // Validation de l'email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return res.status(400).json({ error: "Format d'email invalide" });
   }
-
   try {
     // Vérifier si l'email existe déjà
     const [existingUsers] = await pool.query(
@@ -156,7 +148,6 @@ app.post("/register", async (req, res) => {
     }
 
     let insertQuery, values;
-
     if (role === "etudiant") {
       // Validation des champs spécifiques à l'étudiant
       if (!filiere || !parcours || !niveau) {
@@ -174,24 +165,19 @@ app.post("/register", async (req, res) => {
       if (!titre) {
         return res.status(400).json({ error: "Le titre est requis pour l'encadreur" });
       }
-
       insertQuery = `
         INSERT INTO encadreur (Matricule, Nom, Email, Mot_de_passe, Titre)
         VALUES (?, ?, ?, ?, ?)
       `;
       values = [matricule, nom, email, password, titre];
     }
-
     const [result] = await pool.query(insertQuery, values);
-
     console.log(`✅ ${role} créé avec succès. ID:`, result.insertId);
-
     res.status(201).json({
       message: "Compte créé avec succès",
       role: role,
       id: result.insertId
     });
-
   } catch (err) {
     console.error("❌ Erreur lors de la création du compte:", err);
 
@@ -253,7 +239,6 @@ app.get("/etudiants/:id", async (req, res) => {
     if (etudiantRows.length === 0) {
       return res.status(404).json({ error: "Étudiant introuvable" });
     }
-
     // Récupérer les projets de l'étudiant (individuels ou via son équipe)
     let projetRows = [];
     try {
@@ -372,46 +357,50 @@ app.get("/projets/:id/livrables", async (req, res) => {
    }
 });
 
-// GET membres de l'équipe d'un projet spécifique
+// GET membres de l'équipe d'un projet (amélioré pour gérer les projets individuels)
 app.get("/projets/:id/equipe", async (req, res) => {
   try {
-    console.log(`👥 Récupération des membres de l'équipe pour le projet ${req.params.id}`);
+    const projetId = req.params.id;
+    console.log(`👥 Récupération de l'équipe pour le projet ${projetId}`);
 
-    // D'abord vérifier si le projet a une équipe
+    // 1. Récupérer l'Id_equipe et l'Id_etudiant du projet
     const [projetRows] = await pool.query(
-      "SELECT Id_equipe, Theme, Id_etudiant FROM projet WHERE Id_projet = ?",
-      [req.params.id]
+      "SELECT Id_equipe, Id_etudiant FROM projet WHERE Id_projet = ?",
+      [projetId]
     );
 
     if (projetRows.length === 0) {
-      console.log(`❌ Projet ${req.params.id} non trouvé`);
       return res.status(404).json({ error: "Projet non trouvé" });
     }
 
-    const projet = projetRows[0];
-    console.log(`📋 Projet trouvé: ${projet.Theme}, Id_equipe: ${projet.Id_equipe}, Id_etudiant: ${projet.Id_etudiant}`);
+    const { Id_equipe, Id_etudiant } = projetRows[0];
+    let membres = [];
 
-    if (!projet.Id_equipe) {
-      console.log(`📋 Projet ${req.params.id} n'a pas d'équipe`);
-      return res.json([]);
+    // Si c'est un projet d'équipe, on tente de récupérer les membres
+    if (Id_equipe) {
+      console.log(`Projet en équipe (ID: ${Id_equipe}). Récupération des membres.`);
+      [membres] = await pool.query(
+        `SELECT Immatricule, Nom, Niveau, Parcours FROM etudiant WHERE Id_equipe = ? ORDER BY Nom`,
+        [Id_equipe]
+      );
     }
 
-    // Récupérer tous les membres de l'équipe
-    const [membres] = await pool.query(
-      `SELECT E.Immatricule, E.Nom, E.Email, E.Niveau, E.Id_equipe
-       FROM etudiant E
-       WHERE E.Id_equipe = ?
-       ORDER BY E.Nom`,
-      [projet.Id_equipe]
-    );
+    // **CORRECTION :** Si l'équipe est vide mais qu'un étudiant principal est défini,
+    // on le récupère. C'est le cas pour un projet individuel.
+    if (membres.length === 0 && Id_etudiant) {
+      console.log(`Projet individuel ou équipe vide. Récupération de l'étudiant ID: ${Id_etudiant}.`);
+      [membres] = await pool.query(
+        `SELECT Immatricule, Nom, Niveau, Parcours FROM etudiant WHERE Immatricule = ?`,
+        [Id_etudiant]
+      );
+    }
 
-    console.log(`✅ ${membres.length} membres trouvés pour l'équipe ${projet.Id_equipe} du projet ${req.params.id}`);
-    console.log(`📋 Membres:`, membres.map(m => `${m.Nom} (${m.Immatricule})`));
-
+    console.log(`✅ ${membres.length} membre(s) trouvé(s) pour le projet ${projetId}.`);
     res.json(membres);
+
   } catch (err) {
     console.error("❌ Erreur récupération membres équipe:", err);
-    res.status(500).json({ error: "Erreur récupération membres équipe", details: err.message });
+    res.status(500).json({ error: "Erreur lors de la récupération des membres de l'équipe" });
   }
 });
 
@@ -901,7 +890,6 @@ app.get("/etudiants/:id/calendrier", async (req, res) => {
       [etudiantId]
     );
     const equipeId = etudiantRows.length > 0 ? etudiantRows[0].Id_equipe : null;
-
     // Étape 2: Construire la requête améliorée
     const [rows] = await pool.query(
       `
@@ -913,9 +901,7 @@ app.get("/etudiants/:id/calendrier", async (req, res) => {
       FROM projet P
       WHERE
         P.Id_etudiant = ? OR (P.Id_equipe IS NOT NULL AND P.Id_equipe = ?)
-
       UNION
-
       -- Récupérer les DATES DE SOUMISSION des livrables liés à TOUS les projets de l'étudiant/équipe
       SELECT
         L.Date_soumission AS date,
@@ -932,7 +918,6 @@ app.get("/etudiants/:id/calendrier", async (req, res) => {
     );
     console.log(`📅 Événements trouvés pour l'étudiant ${etudiantId} (équipe ${equipeId || 'N/A'}): ${rows.length}`);
     res.json(rows);
-
   } catch (err) {
     console.error("❌ Erreur lors de la récupération du calendrier :", err);
     res.status(500).json({ error: "Erreur serveur lors de la récupération du calendrier" });
@@ -1322,6 +1307,43 @@ app.get("/etudiants/:immatricule", async (req, res) => {
   } catch (err) {
     console.error("Erreur lors de la récupération des détails de l'étudiant :", err);
     res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// AJOUT : GET tous les livrables pour un encadreur spécifique
+app.get("/encadreurs/:matricule/livrables", async (req, res) => {
+  const { matricule } = req.params;
+  console.log(`📚 Récupération des livrables à corriger pour l'encadreur ${matricule}`);
+
+  try {
+    const query = `
+      SELECT
+        L.Id_livrable,
+        L.Titre,
+        L.Nom AS Nom_fichier,
+        L.Type,
+        L.Taille_fichier,
+        L.Date_soumission,
+        L.Status,
+        L.Chemin_fichier,
+        P.Theme AS Nom_projet,
+        ET.Nom AS Nom_etudiant,
+        ET.Image AS Avatar_etudiant
+      FROM livrable L
+      JOIN projet P ON L.Id_projet = P.Id_projet
+      JOIN etudiant ET ON L.Id_etudiant = ET.Immatricule
+      WHERE L.Id_encadreur = ?
+      ORDER BY L.Date_soumission DESC
+    `;
+
+    const [livrables] = await pool.query(query, [matricule]);
+
+    console.log(`✅ ${livrables.length} livrables trouvés pour l'encadreur ${matricule}.`);
+    res.json(livrables);
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la récupération des livrables de l'encadreur:", err);
+    res.status(500).json({ error: "Erreur serveur lors de la récupération des livrables" });
   }
 });
 
