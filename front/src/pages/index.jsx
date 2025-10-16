@@ -1,10 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom"; // si tu n'utilises pas react-router, transforme Link en <a>
+import { Link, useLocation } from "react-router-dom";
+import axios from "axios";
 
 function Index() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const location = useLocation(); // ✅ récupérer l'objet location
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    students: [],
+    projects: [],
+    livrables: [],
+    statistics: {
+      totalStudents: 0,
+      activeProjects: 0,
+      pendingLivrables: 0,
+      completedProjects: 0
+    }
+  });
+  const location = useLocation();
 
   useEffect(() => {
     // init feather (CDN) et AOS (CDN) si disponibles
@@ -20,7 +33,9 @@ function Index() {
 
     if (userData && userRole === "encadreur") {
       console.log("✅ Utilisateur encadreur connecté");
-      setUser(JSON.parse(userData));
+      const userInfo = JSON.parse(userData);
+      setUser(userInfo);
+      loadDashboardData(userInfo.Matricule);
     } else {
       console.log("❌ Pas d'utilisateur encadreur connecté, redirection vers login");
       // Rediriger vers la page de login si pas d'utilisateur connecté ou rôle incorrect
@@ -34,6 +49,43 @@ function Index() {
       window.feather.replace();
     }
   });
+
+  const loadDashboardData = async (encadreurId) => {
+    try {
+      setLoading(true);
+
+      // Charger les données en parallèle
+      const [studentsRes, projectsRes, livrablesRes] = await Promise.all([
+        axios.get(`http://localhost:5000/encadreurs/${encadreurId}/etudiants`),
+        axios.get(`http://localhost:5000/encadreurs/${encadreurId}/projets`),
+        axios.get(`http://localhost:5000/encadreurs/${encadreurId}/livrables`)
+      ]);
+
+      const students = studentsRes.data || [];
+      const projects = projectsRes.data || [];
+      const livrables = livrablesRes.data || [];
+
+      // Calculer les statistiques
+      const statistics = {
+        totalStudents: students.length,
+        activeProjects: projects.filter(p => p.Status === 'En cours').length,
+        pendingLivrables: livrables.filter(l => l.Status === 'En attente' || l.Status === 'Soumis').length,
+        completedProjects: projects.filter(p => p.Status === 'fini').length
+      };
+
+      setDashboardData({
+        students,
+        projects,
+        livrables,
+        statistics
+      });
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Erreur lors du chargement des données du dashboard:", error);
+      setLoading(false);
+    }
+  };
 
 
   // ⚡ Ajoute ça juste avant return
@@ -102,11 +154,6 @@ function Index() {
             </div>
 
             <div className="hidden md:flex items-center space-x-4">
-              <button className="p-1 rounded-full text-blue-200 hover:text-white relative" type="button">
-                <i data-feather="bell"></i>
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 notification-dot" />
-              </button>
-
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
@@ -114,7 +161,6 @@ function Index() {
                   alt="Profile"
                 />
                 <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
-                <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
           </div>
@@ -179,15 +225,6 @@ function Index() {
                       <i data-feather="file-text" className="mr-3 h-5 w-5"></i>{" "}
                       Livrables
                     </Link>
-                    <Link
-                      to="/statistique"
-                      className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                        "/statistique"
-                      )}`}
-                    >
-                      <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i>{" "}
-                      Statistiques
-                    </Link>
         
                     <div className="mt-8">
                       <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -204,6 +241,19 @@ function Index() {
                           Paramètres
                         </Link>
                       </div>
+                    </div>
+
+                    {/* Logout Section */}
+                    <div className="mt-8 pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => {
+                          localStorage.clear();
+                          window.location.href = "/login";
+                        }}
+                        className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
+                      >
+                        <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+                      </button>
                     </div>
                   </nav>
                 </aside>
@@ -225,7 +275,7 @@ function Index() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Étudiants encadrés</p>
-                  <p className="text-2xl font-semibold text-gray-800">14</p>
+                  <p className="text-2xl font-semibold text-gray-800">{dashboardData.statistics.totalStudents}</p>
                 </div>
               </div>
             </div>
@@ -238,7 +288,7 @@ function Index() {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-500">Projets actifs</p>
-                  <p className="text-2xl font-semibold text-gray-800">8</p>
+                  <p className="text-2xl font-semibold text-gray-800">{dashboardData.statistics.activeProjects}</p>
                 </div>
               </div>
             </div>
@@ -247,11 +297,11 @@ function Index() {
             <div className="dashboard-card bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
-                  <i data-feather="calendar"></i>
+                  <i data-feather="file-text"></i>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Réunions cette semaine</p>
-                  <p className="text-2xl font-semibold text-gray-800">5</p>
+                  <p className="text-sm font-medium text-gray-500">Livrables en attente</p>
+                  <p className="text-2xl font-semibold text-gray-800">{dashboardData.statistics.pendingLivrables}</p>
                 </div>
               </div>
             </div>
@@ -259,12 +309,12 @@ function Index() {
             {/* carte 4 */}
             <div className="dashboard-card bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
-                <div className="p-3 rounded-full bg-red-100 text-red-600">
-                  <i data-feather="alert-triangle"></i>
+                <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                  <i data-feather="check-circle"></i>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-500">Livrables en retard</p>
-                  <p className="text-2xl font-semibold text-gray-800">2</p>
+                  <p className="text-sm font-medium text-gray-500">Projets terminés</p>
+                  <p className="text-2xl font-semibold text-gray-800">{dashboardData.statistics.completedProjects}</p>
                 </div>
               </div>
             </div>
@@ -411,146 +461,74 @@ function Index() {
                   </thead>
 
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {/* Row 1 */}
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <img className="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/2" alt="Jean Dupont" />
+                    {dashboardData.students.map((student, index) => (
+                      <tr key={student.Immatricule || index} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <img
+                                className="h-10 w-10 rounded-full"
+                                src={student.Avatar ? `http://localhost:5000${student.Avatar}` : `http://static.photos/people/200x200/${index + 2}`}
+                                alt={`${student.Nom} ${student.Prenom}`}
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{student.Nom} {student.Prenom}</div>
+                              <div className="text-sm text-gray-500">{student.Email || `${student.Nom?.toLowerCase()}.${student.Prenom?.toLowerCase()}@eni.fr`}</div>
+                            </div>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Jean Dupont</div>
-                            <div className="text-sm text-gray-500">jean.dupont@eni.fr</div>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{student.Nom_projet || 'Projet non assigné'}</div>
+                          <div className="text-sm text-gray-500">{student.Theme || 'Thème à définir'}</div>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            student.Niveau === 'L3' ? 'bg-blue-100 text-blue-800' :
+                            student.Niveau === 'M1' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {student.Niveau || 'N/A'}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div className={`h-2.5 rounded-full ${
+                              (student.Avancement || 0) >= 70 ? 'bg-green-600' :
+                              (student.Avancement || 0) >= 40 ? 'bg-blue-600' :
+                              'bg-yellow-500'
+                            }`} style={{ width: `${student.Avancement || 0}%` }} />
                           </div>
-                        </div>
-                      </td>
+                          <div className="text-xs text-gray-500 mt-1">{student.Avancement || 0}% complété</div>
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Système de gestion académique</div>
-                        <div className="text-sm text-gray-500">Développement web</div>
-                      </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          Prochaine réunion à définir
+                        </td>
 
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">M1</span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: "65%" }} />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">65% complété</div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        18/05/2023 - 10:00
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button type="button" className="text-blue-600 hover:text-blue-900 mr-3">
-                          <i data-feather="eye"></i>
-                        </button>
-                        <button type="button" className="text-green-600 hover:text-green-900 mr-3">
-                          <i data-feather="message-square"></i>
-                        </button>
-                        <button type="button" className="text-purple-600 hover:text-purple-900">
-                          <i data-feather="calendar"></i>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Row 2 */}
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <img className="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/3" alt="Marie Martin" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Marie Martin</div>
-                            <div className="text-sm text-gray-500">marie.martin@eni.fr</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Plateforme e-learning</div>
-                        <div className="text-sm text-gray-500">Développement web</div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">L1</span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-green-600 h-2.5 rounded-full" style={{ width: "40%" }} />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">40% complété</div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        20/05/2023 - 14:00
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button type="button" className="text-blue-600 hover:text-blue-900 mr-3">
-                          <i data-feather="eye"></i>
-                        </button>
-                        <button type="button" className="text-green-600 hover:text-green-900 mr-3">
-                          <i data-feather="message-square"></i>
-                        </button>
-                        <button type="button" className="text-purple-600 hover:text-purple-900">
-                          <i data-feather="calendar"></i>
-                        </button>
-                      </td>
-                    </tr>
-
-                    {/* Row 3 */}
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <img className="h-10 w-10 rounded-full" src="http://static.photos/people/200x200/4" alt="Groupe L1-04" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">Groupe L1-04</div>
-                            <div className="text-sm text-gray-500">4 membres</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Application mobile</div>
-                        <div className="text-sm text-gray-500">Développement mobile</div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">L1</span>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: "25%" }} />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">25% complété</div>
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        22/05/2023 - 16:30
-                      </td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button type="button" className="text-blue-600 hover:text-blue-900 mr-3">
-                          <i data-feather="eye"></i>
-                        </button>
-                        <button type="button" className="text-green-600 hover:text-green-900 mr-3">
-                          <i data-feather="message-square"></i>
-                        </button>
-                        <button type="button" className="text-purple-600 hover:text-purple-900">
-                          <i data-feather="calendar"></i>
-                        </button>
-                      </td>
-                    </tr>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button type="button" className="text-blue-600 hover:text-blue-900 mr-3">
+                            <i data-feather="eye"></i>
+                          </button>
+                          <button type="button" className="text-green-600 hover:text-green-900 mr-3">
+                            <i data-feather="message-square"></i>
+                          </button>
+                          <button type="button" className="text-purple-600 hover:text-purple-900">
+                            <i data-feather="calendar"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {dashboardData.students.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                          Aucun étudiant trouvé
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

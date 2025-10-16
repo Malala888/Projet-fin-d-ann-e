@@ -21,6 +21,8 @@ const DetailsProjetEncadreur = () => {
   const [membresEquipe, setMembresEquipe] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [grade, setGrade] = useState("");
+  const [isSubmittingGrade, setIsSubmittingGrade] = useState(false);
 
   useEffect(() => {
     AOS.init({ duration: 800, once: true });
@@ -113,6 +115,47 @@ const DetailsProjetEncadreur = () => {
       const oldProgress = Object.values(composants).filter(Boolean).length * 25;
       setProjet(prev => ({ ...prev, Avancement: oldProgress }));
       alert("La mise à jour a échoué. Veuillez réessayer.");
+    }
+  };
+
+  const handleGradeSubmit = async () => {
+    if (!grade || grade === "") {
+      alert("Veuillez entrer une note");
+      return;
+    }
+
+    const noteFloat = parseFloat(grade);
+    if (isNaN(noteFloat) || noteFloat < 0 || noteFloat > 20) {
+      alert("La note doit être un nombre entre 0 et 20");
+      return;
+    }
+
+    setIsSubmittingGrade(true);
+
+    try {
+      const response = await axios.put(`http://localhost:5000/projets/${id}/note`, {
+        note: noteFloat
+      });
+
+      // Mettre à jour le projet localement
+      setProjet(prev => ({
+        ...prev,
+        Status: "fini",
+        Note: noteFloat
+      }));
+
+      setGrade("");
+      alert("Note ajoutée avec succès ! Le projet a été marqué comme terminé.");
+
+    } catch (error) {
+      console.error("Erreur lors de la soumission de la note:", error);
+      if (error.response && error.response.data && error.response.data.error) {
+        alert(`Erreur: ${error.response.data.error}`);
+      } else {
+        alert("Erreur lors de la soumission de la note. Veuillez réessayer.");
+      }
+    } finally {
+      setIsSubmittingGrade(false);
     }
   };
 
@@ -215,9 +258,6 @@ const DetailsProjetEncadreur = () => {
             <Link to="/livrable" className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive("/livrable")}`}>
               <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Livrables
             </Link>
-            <Link to="/statistique" className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive("/statistique")}`}>
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Statistiques
-            </Link>
             <div className="mt-8">
               <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Administration
@@ -227,6 +267,16 @@ const DetailsProjetEncadreur = () => {
                   <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
                 </Link>
               </div>
+            </div>
+
+            {/* Logout Section */}
+            <div className="mt-8 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
+              >
+                <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+              </button>
             </div>
           </nav>
         </aside>
@@ -420,6 +470,80 @@ const DetailsProjetEncadreur = () => {
               </p>
             )}
           </section>
+
+          {/* Grading Section - Seulement si le projet n'est pas déjà terminé */}
+          {projet.Status !== "fini" && (
+            <section className="bg-white p-6 rounded-lg shadow mb-8">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">
+                Ajouter une Note
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Attribuez une note sur 20 au projet et marquez-le comme terminé.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <label htmlFor="grade-input" className="block text-sm font-medium text-gray-700 mb-2">
+                    Note (sur 20)
+                  </label>
+                  <input
+                    type="number"
+                    id="grade-input"
+                    min="0"
+                    max="20"
+                    step="0.25"
+                    placeholder="Ex: 15.5"
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    disabled={isSubmittingGrade}
+                  />
+                </div>
+                <button
+                  onClick={handleGradeSubmit}
+                  disabled={isSubmittingGrade || !grade}
+                  className={`px-6 py-2 rounded-md text-white font-medium ${
+                    isSubmittingGrade || !grade
+                      ? "bg-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } flex items-center`}
+                >
+                  {isSubmittingGrade ? (
+                    <>
+                      <i data-feather="loader" className="mr-2 h-4 w-4 animate-spin"></i>
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <i data-feather="check-circle" className="mr-2 h-4 w-4"></i>
+                      Soumettre la Note
+                    </>
+                  )}
+                </button>
+              </div>
+              {projet.Note && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-800">
+                    <strong>Note actuelle:</strong> {projet.Note}/20
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Affichage de la note si le projet est terminé */}
+          {projet.Status === "fini" && projet.Note && (
+            <section className="bg-green-50 border border-green-200 p-6 rounded-lg shadow mb-8">
+              <h2 className="text-lg font-medium text-green-900 mb-2">
+                Projet Terminé
+              </h2>
+              <div className="flex items-center">
+                <i data-feather="check-circle" className="h-5 w-5 text-green-600 mr-2"></i>
+                <span className="text-green-800 font-medium">
+                  Note finale: {projet.Note}/20
+                </span>
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </div>

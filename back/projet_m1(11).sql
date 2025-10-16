@@ -199,7 +199,8 @@ CREATE TABLE `projet` (
   `Description` text DEFAULT NULL,
   `Id_etudiant` int(11) NOT NULL,
   `Id_encadreur` int(11) NOT NULL,
-  `Id_equipe` int(11) DEFAULT NULL
+  `Id_equipe` int(11) DEFAULT NULL,
+  `Note` decimal(5,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --

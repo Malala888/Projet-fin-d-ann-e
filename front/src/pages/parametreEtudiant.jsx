@@ -199,10 +199,6 @@ const ParametreEtudiant = () => {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <button className="p-1 rounded-full text-blue-200 hover:text-white relative">
-                <i data-feather="bell"></i>
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-              </button>
               <div className="group relative">
                 <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
                   <img
@@ -213,7 +209,6 @@ const ParametreEtudiant = () => {
                   <span className="ml-2 text-sm font-medium">
                     {etudiant.Nom}
                   </span>
-                  <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
                 </div>
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
                   <button
@@ -289,26 +284,21 @@ const ParametreEtudiant = () => {
               Calendrier
             </Link>
             <Link
-              to="/statistique_etudiant"
-              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
-            >
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5"></i> Mes
-              statistiques
-            </Link>
-            <Link
               to="/parametre_etudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700"
             >
               <i data-feather="settings" className="mr-3 h-5 w-5"></i>{" "}
               Paramètres
             </Link>
-            <Link
-              to="/"
-              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
-            >
-              <i data-feather="log-out" className="mr-3 h-5 w-5"></i>{" "}
-              Déconnexion
-            </Link>
+            {/* Logout Section */}
+            <div className="mt-8 pt-4 border-t border-gray-200">
+              <button
+                onClick={handleLogout}
+                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
+              >
+                <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+              </button>
+            </div>
           </nav>
         </aside>
 

@@ -78,11 +78,6 @@ const Projet = () => {
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <button className="p-1 rounded-full text-blue-200 hover:text-white relative">
-                <img src="/icons/notification-icon.svg" alt="Notifications" className="h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                <i data-feather="bell" style={{display: 'none'}}></i>
-                <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-              </button>
               <div className="flex items-center">
                 <img
                   className="h-8 w-8 rounded-full"
@@ -93,7 +88,6 @@ const Projet = () => {
                   }}
                 />
                 <span className="ml-2 text-sm font-medium">{user?.Nom || "Encadreur"}</span>
-                <i data-feather="chevron-down" className="ml-1 h-4 w-4"></i>
               </div>
             </div>
           </div>
@@ -165,16 +159,6 @@ const Projet = () => {
               <i data-feather="file-text" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
               Livrables
             </Link>
-            <Link
-              to="/statistique"
-              className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/statistique"
-              )}`}
-            >
-              <img src="/icons/statistics-icon.svg" alt="Statistiques" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="bar-chart-2" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
-              Statistiques
-            </Link>
 
             <div className="mt-8">
               <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -192,6 +176,19 @@ const Projet = () => {
                   Paramètres
                 </Link>
               </div>
+            </div>
+
+            {/* Logout Section */}
+            <div className="mt-8 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = "/login";
+                }}
+                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
+              >
+                <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+              </button>
             </div>
           </nav>
         </aside>

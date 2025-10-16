@@ -584,6 +584,60 @@ app.delete("/projets/:id", async (req, res) => {
   }
 });
 
+// PUT ajouter une note et marquer le projet comme terminé
+app.put("/projets/:id/note", async (req, res) => {
+  const projetId = req.params.id;
+  const { note } = req.body;
+
+  console.log(`📝 Ajout de note pour le projet ${projetId}:`, note);
+
+  // Validation de la note
+  if (note === undefined || note === null || note === "") {
+    return res.status(400).json({ error: "La note est requise" });
+  }
+
+  // Validation que la note est un nombre entre 0 et 20
+  const noteFloat = parseFloat(note);
+  if (isNaN(noteFloat) || noteFloat < 0 || noteFloat > 20) {
+    return res.status(400).json({ error: "La note doit être un nombre entre 0 et 20" });
+  }
+
+  try {
+    // Vérifier que le projet existe
+    const [projetCheck] = await pool.query("SELECT Id_projet, Status FROM projet WHERE Id_projet = ?", [projetId]);
+    if (projetCheck.length === 0) {
+      return res.status(404).json({ error: "Projet non trouvé" });
+    }
+
+    // Vérifier que le projet n'est pas déjà terminé
+    if (projetCheck[0].Status === "fini") {
+      return res.status(400).json({ error: "Le projet est déjà terminé" });
+    }
+
+    // Mettre à jour la note et le statut du projet
+    const [result] = await pool.query(
+      "UPDATE projet SET Note = ?, Status = 'fini' WHERE Id_projet = ?",
+      [noteFloat, projetId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: "Aucune modification effectuée" });
+    }
+
+    console.log(`✅ Projet ${projetId} noté ${noteFloat}/20 et marqué comme terminé`);
+
+    res.json({
+      message: "Note ajoutée et projet marqué comme terminé avec succès",
+      note: noteFloat,
+      status: "fini"
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur lors de l'ajout de la note :", err);
+    res.status(500).json({ error: "Erreur lors de l'ajout de la note", details: err.message });
+  }
+});
+
 // PUT modifier une équipe existante
 app.put("/equipes/:id", async (req, res) => {
   const { nom_equipe, membres } = req.body;
