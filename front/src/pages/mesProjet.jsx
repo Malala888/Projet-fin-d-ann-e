@@ -1298,7 +1298,7 @@ const MesProjets = () => {
                 <i data-feather="menu" className="h-6 w-6" />
               </button>
               <i data-feather="book-open" className="h-8 w-8"></i>
-              <div className="hidden md:block ml-10">
+              <div className="hidden md:block ml-3 sm:ml-10">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
                   Espace Étudiant
                 </p>
@@ -1335,17 +1335,6 @@ const MesProjets = () => {
             </button>
           </div>
         </div>
-        <div className="mt-8 border-t pt-4">
-          <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.href = "/login";
-            }}
-            className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
-          >
-            <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
-          </button>
-        </div>
       </nav>
       <div className="flex flex-1">
         <aside
@@ -1373,48 +1362,32 @@ const MesProjets = () => {
               to="/dashboard"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="home" className="mr-3 h-5 w-5"></i>Tableau de
-              bord
+              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
             </Link>
             <Link
               to="/mes_projet"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md bg-blue-50 text-blue-700"
             >
-              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i>Mes
-              projets
+              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes projets
             </Link>
             <Link
               to="/mes_livrables"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="file-text" className="mr-3 h-5 w-5"></i>Mes
-              livrables
+              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes livrables
             </Link>
             <Link
               to="/calendrierEtudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="calendar" className="mr-3 h-5 w-5"></i>Calendrier
+              <i data-feather="calendar" className="mr-3 h-5 w-5"></i> Calendrier
             </Link>
             <Link
               to="/parametre_etudiant"
               className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
             >
-              <i data-feather="settings" className="mr-3 h-5 w-5"></i>Paramètres
+              <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
             </Link>
-            <div className="mt-8">
-              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Administration
-              </h3>
-              <div className="mt-1 space-y-1">
-                <Link
-                  to="/parametre_etudiant"
-                  className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600"
-                >
-                  <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
-                </Link>
-              </div>
-            </div>
           </nav>
         </aside>
         <main className="flex-1 p-8">

@@ -18,6 +18,7 @@ const ProjectDetails = () => {
   const [membresEquipe, setMembresEquipe] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     AOS.init();
@@ -125,132 +126,128 @@ const ProjectDetails = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <img src="/icons/logo-icon.svg" alt="Logo" className="h-8 w-8" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="book-open" className="h-8 w-8" style={{display: 'none'}}></i>
-              <div className="hidden md:block ml-10 space-x-4">
+              <button
+                type="button"
+                className="md:hidden mr-3 p-2 rounded text-white hover:bg-blue-600"
+                onClick={() => setSidebarOpen((s) => !s)}
+                aria-label="Toggle menu"
+              >
+                <i data-feather="menu" className="h-6 w-6" />
+              </button>
+              <i data-feather="book-open" className="h-8 w-8"></i>
+              <div className="hidden md:block ml-3 sm:ml-10">
                 <p className="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-300 to-white bg-clip-text text-transparent">
-                  Gestion de Projet
+                  Espace Étudiant
                 </p>
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-4">
-              <div className="flex items-center">
-                <img
-                  className="h-8 w-8 rounded-full"
-                  src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/1"}
-                  alt=""
-                  onError={(e) => {
-                    e.target.src = "http://static.photos/people/200x200/1";
-                  }}
-                />
-                <span className="ml-2 text-sm font-medium">{user?.Nom || "Utilisateur"}</span>
+              <div className="group relative">
+                <div className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-blue-600 transition">
+                  <img
+                    className="h-8 w-8 rounded-full"
+                    src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/2"}
+                    alt="Profile"
+                  />
+                  <span className="ml-2 text-sm font-medium">
+                    {user?.Nom || "Étudiant"}
+                  </span>
+                </div>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none group-hover:pointer-events-auto">
+                  <button
+                    onClick={() => {
+                      localStorage.clear();
+                      window.location.href = "/login";
+                    }}
+                    className="w-full text-left flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <i data-feather="log-out" className="mr-2 h-4 w-4"></i>{" "}
+                    Déconnexion
+                  </button>
+                </div>
               </div>
             </div>
+            <button
+              onClick={() => {
+                localStorage.clear();
+                window.location.href = "/login";
+              }}
+              className="md:hidden p-2 rounded text-white hover:bg-blue-600"
+            >
+              <i data-feather="log-out" className="h-6 w-6"></i>
+            </button>
           </div>
         </div>
       </nav>
 
       <div className="flex flex-1">
         {/* Sidebar */}
-        <aside className="bg-white w-64 min-h-screen border-r hidden md:block">
+        <aside
+          className={`sidebar bg-white w-64 min-h-screen border-r ${
+            sidebarOpen ? "" : "hidden"
+          } md:block absolute md:relative z-20 shadow-xl md:shadow-none transition-transform duration-300 ease-in-out`}
+        >
           <div className="p-4 border-b flex items-center">
             <img
               className="h-10 w-10 rounded-full"
-              src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/1"}
-              alt=""
-              onError={(e) => {
-                e.target.src = "http://static.photos/people/200x200/1";
-              }}
+              src={user?.Avatar ? `http://localhost:5000${user.Avatar}` : "http://static.photos/people/200x200/2"}
+              alt="Avatar de l'étudiant"
             />
             <div className="ml-3">
-              <p className="text-sm font-medium text-gray-700">{user?.Nom || "Utilisateur"}</p>
-              <p className="text-xs text-gray-500">{user?.Titre || "Utilisateur"}</p>
+              <p className="text-sm font-medium text-gray-700">
+                {user?.Nom || "Étudiant"}
+              </p>
+              <p className="text-xs text-gray-500">
+                Étudiant {user?.Niveau || "Niveau"}
+              </p>
             </div>
           </div>
           <nav className="p-4 space-y-1">
             <Link
-              to="/index"
+              to="/dashboard"
               className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/index"
+                "/dashboard"
               )}`}
             >
-              <img src="/icons/dashboard-icon.svg" alt="Dashboard" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="home" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Dashboard
+              <i data-feather="home" className="mr-3 h-5 w-5"></i> Tableau de bord
             </Link>
             <Link
-              to="/etudiant"
+              to="/mes_projet"
               className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/etudiant"
+                "/mes_projet"
               )}`}
             >
-              <img src="/icons/students-icon.svg" alt="Étudiants" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="users" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Étudiants
+              <i data-feather="briefcase" className="mr-3 h-5 w-5"></i> Mes projets
             </Link>
             <Link
-              to="/projet"
+              to="/mes_livrables"
               className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/projet"
+                "/mes_livrables"
               )}`}
             >
-              <img src="/icons/projects-icon.svg" alt="Projets" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="briefcase" className="mr-3 h-5 w-5" style={{display: 'none'}}></i> Projets
+              <i data-feather="file-text" className="mr-3 h-5 w-5"></i> Mes livrables
             </Link>
             <Link
-              to="/calendrier"
+              to="/calendrierEtudiant"
               className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/calendrier"
+                "/calendrierEtudiant"
               )}`}
             >
-              <img src="/icons/calendar-icon.svg" alt="Calendrier" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="calendar" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
-              Calendrier
+              <i data-feather="calendar" className="mr-3 h-5 w-5"></i> Calendrier
             </Link>
             <Link
-              to="/livrable"
+              to="/parametre_etudiant"
               className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                "/livrable"
+                "/parametre_etudiant"
               )}`}
             >
-              <img src="/icons/deliverables-icon.svg" alt="Livrables" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-              <i data-feather="file-text" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>{" "}
-              Livrables
+              <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
             </Link>
-
-            <div className="mt-8">
-              <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Administration
-              </h3>
-              <div className="mt-1 space-y-1">
-                <Link
-                  to="/parametre"
-                  className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${isActive(
-                    "/parametre"
-                  )}`}
-                >
-                  <img src="/icons/settings-icon.svg" alt="Paramètres" className="mr-3 h-5 w-5" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                  <i data-feather="settings" className="mr-3 h-5 w-5" style={{display: 'none'}}></i>
-                  Paramètres
-                </Link>
-              </div>
-            </div>
-
-            {/* Logout Section */}
-            <div className="mt-8 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.href = "/login";
-                }}
-                className="flex items-center px-2 py-2 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 w-full text-left"
-              >
-                <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
-              </button>
-            </div>
           </nav>
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-6 overflow-y-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800">{projet.Theme}</h1>
