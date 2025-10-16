@@ -881,6 +881,45 @@ app.get("/livrables/:id/download", async (req, res) => {
 });
 
 // ------------------- CALENDRIER -------------------
+app.get("/encadreurs/:id/calendrier", async (req, res) => {
+  const encadreurId = req.params.id;
+  try {
+    console.log(`📅 Récupération du calendrier pour l'encadreur ${encadreurId}`);
+
+    // La nouvelle requête utilise UNION pour combiner les projets et les livrables
+    // dans un format unifié, exactement comme pour le calendrier étudiant.
+    const [events] = await pool.query(
+      `
+      -- Récupérer les DATES DE FIN des projets supervisés par l'encadreur
+      SELECT
+        P.Date_fin AS date,
+        P.Theme AS title,
+        'Projet' AS type
+      FROM projet P
+      WHERE P.Id_encadreur = ?
+
+      UNION
+
+      -- Récupérer les DATES DE SOUMISSION des livrables supervisés par l'encadreur
+      SELECT
+        L.Date_soumission AS date,
+        L.Nom AS title, -- Utiliser L.Nom pour la cohérence avec le calendrier étudiant
+        'Livrable' AS type
+      FROM livrable L
+      WHERE L.Id_encadreur = ?
+      `,
+      [encadreurId, encadreurId] // Le paramètre est nécessaire pour chaque SELECT dans l'UNION
+    );
+
+    console.log(`✅ ${events.length} événements trouvés pour l'encadreur ${encadreurId}`);
+    res.json(events); // On renvoie directement le résultat de la requête SQL
+
+  } catch (err) {
+    console.error("❌ Erreur lors de la récupération du calendrier encadreur :", err);
+    res.status(500).json({ error: "Erreur serveur lors de la récupération du calendrier" });
+  }
+});
+
 app.get("/etudiants/:id/calendrier", async (req, res) => {
   const etudiantId = req.params.id;
   try {
