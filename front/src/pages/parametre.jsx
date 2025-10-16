@@ -6,7 +6,6 @@ import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 
 const Parametres = () => {
-  const [switches, setSwitches] = useState([true, true, true, true]);
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -80,11 +79,6 @@ const Parametres = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const toggleSwitch = (index) => {
-    const newSwitches = [...switches];
-    newSwitches[index] = !newSwitches[index];
-    setSwitches(newSwitches);
-  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -330,24 +324,6 @@ const Parametres = () => {
       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900";
   };
 
-  const notifications = [
-    {
-      title: "Notifications par email",
-      desc: "Recevoir des notifications importantes par email",
-    },
-    {
-      title: "Nouveaux livrables",
-      desc: "Être alerté lorsqu'un étudiant soumet un nouveau livrable",
-    },
-    {
-      title: "Rappels de réunion",
-      desc: "Recevoir des rappels avant les réunions programmées",
-    },
-    {
-      title: "Annonces système",
-      desc: "Recevoir les annonces importantes de la plateforme",
-    },
-  ];
 
   // Si l'utilisateur n'est pas encore chargé, afficher un indicateur de chargement
   if (!user) {
@@ -657,42 +633,6 @@ const Parametres = () => {
                 </div>
               </div>
 
-              {/* Notification settings */}
-              <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Préférences de notifications
-                  </h2>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  {notifications.map((notif, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {notif.title}
-                        </p>
-                        <p className="text-sm text-gray-500">{notif.desc}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleSwitch(i)}
-                        className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
-                          ${switches[i] ? "bg-blue-600" : "bg-gray-200"}`}
-                      >
-                        <span
-                          className={`inline-block w-5 h-5 transform bg-white rounded-full transition-transform
-                            ${switches[i] ? "translate-x-5" : "translate-x-0"}`}
-                        />
-                      </button>
-                    </div>
-                  ))}
-                  <div className="pt-4">
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                      Enregistrer les préférences
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Right column */}
@@ -743,116 +683,9 @@ const Parametres = () => {
                 </div>
               </div>
 
-              {/* Informations du système */}
-              <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Informations du système
-                  </h2>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <p className="text-sm text-gray-700">
-                    Version de l'application: 1.0.0
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Système d'exploitation: Windows 11
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Navigateur: Chrome 116
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    Dernière connexion: 23/09/2025 18:00
-                  </p>
-                </div>
-              </div>
 
-              {/* Préférences du compte */}
-              <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Préférences du compte
-                  </h2>
-                </div>
-                <div className="px-6 py-4 space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Langue
-                    </label>
-                    <select value="Français" onChange={() => {}} className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                      <option>Français</option>
-                      <option>English</option>
-                      <option>Español</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Fuseau horaire
-                    </label>
-                    <select value="Europe/Paris (UTC+1)" onChange={() => {}} className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                      <option>Europe/Paris (UTC+1)</option>
-                      <option>UTC</option>
-                      <option>America/New_York (UTC-5)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Format de date
-                    </label>
-                    <select value="JJ/MM/AAAA" onChange={() => {}} className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                      <option>JJ/MM/AAAA</option>
-                      <option>MM/DD/YYYY</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-white shadow rounded-lg overflow-hidden border border-red-200">
-                <div className="px-6 py-4 border-b border-red-200 bg-red-50">
-                  <h2 className="text-lg font-medium text-red-800">
-                    Zone de danger
-                  </h2>
-                </div>
-                <div className="px-6 py-4 space-y-2">
-                  <p className="text-sm text-gray-600 mb-4">
-                    Une fois que vous supprimez votre compte, il n'y a pas de
-                    retour en arrière. Soyez certain.
-                  </p>
-                  <div className="space-y-2">
-                    <button className="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm">
-                      Exporter mes données
-                    </button>
-                    <button className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
-                      Supprimer mon compte
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-lg font-medium text-gray-900">
-                    Informations système
-                  </h2>
-                </div>
-                <div className="px-6 py-4 space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Version de l'application</span>
-                    <span className="text-gray-900">2.3.1</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Dernière connexion</span>
-                    <span className="text-gray-900">18/05/2023 10:24</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Statut du compte</span>
-                    <span className="text-green-600">Actif</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Rôle</span>
-                    <span className="text-gray-900">Enseignant</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </main>

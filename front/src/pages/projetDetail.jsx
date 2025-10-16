@@ -409,44 +409,6 @@ const ProjectDetails = () => {
             )}
           </section>
 
-          {/* Activity log */}
-          <section className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">
-              Activités récentes
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Pour l'instant, le journal d'activité n'est pas dynamique. Tu dois créer une nouvelle route pour le récupérer.
-            </p>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center">
-                <i
-                  data-feather="check-circle"
-                  className="text-green-500 mr-2"
-                ></i>
-                Jean Dupont a soumis le rapport de conception
-                <span className="ml-auto text-xs text-gray-500">
-                  il y a 2 jours
-                </span>
-              </li>
-              <li className="flex items-center">
-                <i data-feather="upload" className="text-blue-500 mr-2"></i>
-                Marie Martin a ajouté un nouveau prototype
-                <span className="ml-auto text-xs text-gray-500">
-                  il y a 1 semaine
-                </span>
-              </li>
-              <li className="flex items-center">
-                <i
-                  data-feather="message-circle"
-                  className="text-yellow-500 mr-2"
-                ></i>
-                Commentaire laissé par l'encadrant
-                <span className="ml-auto text-xs text-gray-500">
-                  il y a 2 semaines
-                </span>
-              </li>
-            </ul>
-          </section>
         </main>
       </div>
     </div>
