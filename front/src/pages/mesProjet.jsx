@@ -1388,6 +1388,12 @@ const MesProjets = () => {
             >
               <i data-feather="settings" className="mr-3 h-5 w-5"></i> Paramètres
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center px-2 py-2 text-sm font-medium rounded-md hover:bg-gray-50 text-gray-600 w-full text-left"
+            >
+              <i data-feather="log-out" className="mr-3 h-5 w-5"></i> Déconnexion
+            </button>
           </nav>
         </aside>
         <main className="flex-1 p-8">

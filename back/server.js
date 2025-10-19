@@ -287,16 +287,18 @@ app.get("/etudiants/:id/projets", async (req, res) => {
     );
     const etudiantEquipeId = etudiantRows.length > 0 ? etudiantRows[0].Id_equipe : null;
 
-    // Requête pour récupérer les projets :
+    // Requête pour récupérer les projets avec leurs notes depuis projet_notes :
     // 1. Les projets où l'étudiant est le créateur (Id_etudiant)
     // 2. OU les projets qui appartiennent à son équipe (Id_equipe)
-    // On utilise DISTINCT pour éviter les doublons si un étudiant est créateur ET dans l'équipe.
+    // On utilise LEFT JOIN pour inclure les projets même s'ils n'ont pas de note
     const query = `
       SELECT DISTINCT
         P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe, P.Id_etudiant,
-        E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur
+        E.Nom AS Nom_encadreur, E.Email AS Email_encadreur, E.Titre AS Titre_encadreur,
+        PN.Note AS note
       FROM projet P
       JOIN encadreur E ON P.Id_encadreur = E.Matricule
+      LEFT JOIN projet_notes PN ON P.Id_projet = PN.Id_projet -- <- LIGNE AJOUTÉE
       WHERE P.Id_etudiant = ? OR (P.Id_equipe IS NOT NULL AND P.Id_equipe = ?)
     `;
 
