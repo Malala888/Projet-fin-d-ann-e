@@ -315,25 +315,27 @@ app.get("/etudiants/:id/projets", async (req, res) => {
 
 // GET projet spécifique avec détails complets (VERSION AMÉLIORÉE)
 app.get("/projets/:id", async (req, res) => {
-   try {
-     const [rows] = await pool.query(
-       `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_encadreur, P.Id_equipe,
-               E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
-               ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant,
-               EQ.Nom_equipe  -- On ajoute le nom de l'équipe ici
-        FROM projet P
-        JOIN encadreur E ON P.Id_encadreur = E.Matricule
-        JOIN etudiant ET ON P.Id_etudiant = ET.Immatricule
-        LEFT JOIN equipe EQ ON P.Id_equipe = EQ.Id_equipe -- On utilise LEFT JOIN au cas où il n'y a pas d'équipe
-        WHERE P.Id_projet = ?`,
-       [req.params.id]
-     );
-     if (rows.length === 0) return res.status(404).json({ error: "Projet introuvable" });
-     res.json(rows[0]);
-   } catch (err) {
-     console.error("❌ Erreur récupération projet détaillé:", err);
-     res.status(500).json({ error: "Erreur récupération projet" });
-   }
+    try {
+        const [rows] = await pool.query(
+            `SELECT P.*, -- On sélectionne toutes les colonnes du projet
+                    E.Nom AS Nom_encadreur, E.Titre AS Titre_encadreur, E.Email AS Email_encadreur,
+                    ET.Nom AS Nom_etudiant, ET.Email AS Email_etudiant,
+                    EQ.Nom_equipe,
+                    PN.Note AS Note -- On récupère la note depuis projet_notes
+             FROM projet P
+             JOIN encadreur E ON P.Id_encadreur = E.Matricule
+             JOIN etudiant ET ON P.Id_etudiant = ET.Immatricule
+             LEFT JOIN equipe EQ ON P.Id_equipe = EQ.Id_equipe -- On utilise LEFT JOIN au cas où il n'y a pas d'équipe
+             LEFT JOIN projet_notes PN ON P.Id_projet = PN.Id_projet -- Jointure ajoutée
+             WHERE P.Id_projet = ?`,
+            [req.params.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: "Projet introuvable" });
+        res.json(rows[0]);
+    } catch (err) {
+        console.error("❌ Erreur récupération projet détaillé:", err);
+        res.status(500).json({ error: "Erreur récupération projet" });
+    }
 });
 
 // GET livrables d'un projet spécifique
@@ -586,58 +588,58 @@ app.delete("/projets/:id", async (req, res) => {
   }
 });
 
-// PUT ajouter une note et marquer le projet comme terminé
+// PUT ajouter/modifier une note et marquer le projet comme terminé
 app.put("/projets/:id/note", async (req, res) => {
-  const projetId = req.params.id;
-  const { note } = req.body;
+    const projetId = req.params.id;
+    const { note } = req.body;
 
-  console.log(`📝 Ajout de note pour le projet ${projetId}:`, note);
+    console.log(`📝 Ajout/Modification de note pour le projet ${projetId}:`, note);
 
-  // Validation de la note
-  if (note === undefined || note === null || note === "") {
-    return res.status(400).json({ error: "La note est requise" });
-  }
-
-  // Validation que la note est un nombre entre 0 et 20
-  const noteFloat = parseFloat(note);
-  if (isNaN(noteFloat) || noteFloat < 0 || noteFloat > 20) {
-    return res.status(400).json({ error: "La note doit être un nombre entre 0 et 20" });
-  }
-
-  try {
-    // Vérifier que le projet existe
-    const [projetCheck] = await pool.query("SELECT Id_projet, Status FROM projet WHERE Id_projet = ?", [projetId]);
-    if (projetCheck.length === 0) {
-      return res.status(404).json({ error: "Projet non trouvé" });
+    // Validation de la note
+    if (note === undefined || note === null || note === "") {
+        return res.status(400).json({ error: "La note est requise" });
     }
 
-    // Vérifier que le projet n'est pas déjà terminé
-    if (projetCheck[0].Status === "fini") {
-      return res.status(400).json({ error: "Le projet est déjà terminé" });
+    // Validation que la note est un nombre entre 0 et 20
+    const noteFloat = parseFloat(note);
+    if (isNaN(noteFloat) || noteFloat < 0 || noteFloat > 20) {
+        return res.status(400).json({ error: "La note doit être un nombre entre 0 et 20" });
     }
 
-    // Mettre à jour la note et le statut du projet
-    const [result] = await pool.query(
-      "UPDATE projet SET Note = ?, Status = 'fini' WHERE Id_projet = ?",
-      [noteFloat, projetId]
-    );
+    const connection = await pool.getConnection(); // Utiliser une transaction
+    try {
+        await connection.beginTransaction();
 
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ error: "Aucune modification effectuée" });
+        // 1. Insérer ou mettre à jour la note dans `projet_notes`
+        // C'est la correction clé : on utilise la bonne table
+        await connection.query(
+            `INSERT INTO projet_notes (Id_projet, Note)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE Note = VALUES(Note)`,
+            [projetId, noteFloat]
+        );
+
+        // 2. Mettre à jour le statut et l'avancement du projet principal
+        await connection.query(
+            "UPDATE projet SET Status = 'fini', Avancement = 100 WHERE Id_projet = ?",
+            [projetId]
+        );
+
+        await connection.commit(); // Valider les changements
+
+        console.log(`✅ Projet ${projetId} noté ${noteFloat}/20 et marqué comme terminé`);
+        res.json({
+            message: "Note soumise avec succès",
+            note: noteFloat,
+        });
+
+    } catch (err) {
+        await connection.rollback(); // Annuler en cas d'erreur
+        console.error("❌ Erreur lors de la soumission de la note :", err);
+        res.status(500).json({ error: "Erreur serveur lors de la soumission de la note." });
+    } finally {
+        connection.release();
     }
-
-    console.log(`✅ Projet ${projetId} noté ${noteFloat}/20 et marqué comme terminé`);
-
-    res.json({
-      message: "Note ajoutée et projet marqué comme terminé avec succès",
-      note: noteFloat,
-      status: "fini"
-    });
-
-  } catch (err) {
-    console.error("❌ Erreur lors de l'ajout de la note :", err);
-    res.status(500).json({ error: "Erreur lors de l'ajout de la note", details: err.message });
-  }
 });
 
 // PUT modifier une équipe existante

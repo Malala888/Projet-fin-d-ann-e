@@ -76,6 +76,13 @@ const DetailsProjetEncadreur = () => {
     fetchProjectData();
   }, [id, navigate]);
 
+  // NOUVEAU : Ce useEffect pré-remplit la note si elle existe déjà
+  useEffect(() => {
+    if (projet && projet.Note) {
+      setGrade(String(projet.Note)); // Convertir en chaîne pour l'input
+    }
+  }, [projet]);
+
   useEffect(() => {
     feather.replace();
   });
@@ -141,11 +148,12 @@ const DetailsProjetEncadreur = () => {
       setProjet(prev => ({
         ...prev,
         Status: "fini",
-        Note: noteFloat
+        Note: noteFloat,
+        Avancement: 100 // On peut aussi forcer l'avancement à 100%
       }));
 
-      setGrade("");
-      alert("Note ajoutée avec succès ! Le projet a été marqué comme terminé.");
+      // Pas besoin de vider `setGrade("")` si on veut que la note modifiée reste visible.
+      alert("Note soumise avec succès !");
 
     } catch (error) {
       console.error("Erreur lors de la soumission de la note:", error);
@@ -471,78 +479,78 @@ const DetailsProjetEncadreur = () => {
             )}
           </section>
 
-          {/* Grading Section - Seulement si le projet n'est pas déjà terminé */}
-          {projet.Status !== "fini" && (
-            <section className="bg-white p-6 rounded-lg shadow mb-8">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">
-                Ajouter une Note
-              </h2>
-              <p className="text-sm text-gray-600 mb-4">
-                Attribuez une note sur 20 au projet et marquez-le comme terminé.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 items-end">
-                <div className="flex-1">
-                  <label htmlFor="grade-input" className="block text-sm font-medium text-gray-700 mb-2">
-                    Note (sur 20)
-                  </label>
-                  <input
-                    type="number"
-                    id="grade-input"
-                    min="0"
-                    max="20"
-                    step="0.25"
-                    placeholder="Ex: 15.5"
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    value={grade}
-                    onChange={(e) => setGrade(e.target.value)}
-                    disabled={isSubmittingGrade}
-                  />
-                </div>
-                <button
-                  onClick={handleGradeSubmit}
-                  disabled={isSubmittingGrade || !grade}
-                  className={`px-6 py-2 rounded-md text-white font-medium ${
-                    isSubmittingGrade || !grade
-                      ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  } flex items-center`}
-                >
-                  {isSubmittingGrade ? (
-                    <>
-                      <i data-feather="loader" className="mr-2 h-4 w-4 animate-spin"></i>
-                      Envoi...
-                    </>
-                  ) : (
-                    <>
-                      <i data-feather="check-circle" className="mr-2 h-4 w-4"></i>
-                      Soumettre la Note
-                    </>
-                  )}
-                </button>
+          {/* --- Section de Notation Améliorée --- */}
+          <section className="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 className="text-lg font-medium text-gray-900 mb-2">
+              {projet.Note ? "Note Actuelle / Modification" : "Noter le Projet"}
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {projet.Status !== "fini"
+                ? "Attribuez ou modifiez la note sur 20. La soumission marquera le projet comme 'Terminé' et à 100% d'avancement."
+                : `Le projet est terminé avec une note de ${projet.Note}/20.`}
+            </p>
+
+            {/* Affiche le formulaire si le projet n'est pas "fini", ou permet de modifier la note */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <label htmlFor="grade-input" className="block text-sm font-medium text-gray-700 mb-2">
+                  Note (sur 20)
+                </label>
+                <input
+                  type="number"
+                  id="grade-input"
+                  min="0"
+                  max="20"
+                  step="0.25"
+                  placeholder="Ex: 15.5"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100"
+                  value={grade}
+                  onChange={(e) => setGrade(e.target.value)}
+                  disabled={isSubmittingGrade}
+                />
               </div>
-              {projet.Note && (
-                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-sm text-green-800">
-                    <strong>Note actuelle:</strong> {projet.Note}/20
+              <button
+                onClick={handleGradeSubmit}
+                disabled={isSubmittingGrade || !grade}
+                className={`px-6 py-2 rounded-md text-white font-medium transition-colors ${
+                  isSubmittingGrade || !grade
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : projet.Note
+                    ? "bg-green-600 hover:bg-green-700" // Couleur pour la modification
+                    : "bg-blue-600 hover:bg-blue-700"   // Couleur pour l'ajout
+                } flex items-center`}
+              >
+                {isSubmittingGrade ? (
+                  <>
+                    <i data-feather="loader" className="mr-2 h-4 w-4 animate-spin"></i>
+                    Envoi...
+                  </>
+                ) : (
+                  <>
+                    <i data-feather={projet.Note ? "edit-3" : "check-circle"} className="mr-2 h-4 w-4"></i>
+                    {projet.Note ? "Modifier la Note" : "Soumettre la Note"}
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* On supprime l'ancien affichage de la note actuelle car il est maintenant intégré */}
+          </section>
+
+          {/* La section "Projet Terminé" peut être conservée si tu veux un message clair à la fin */}
+          {projet.Status === "fini" && projet.Note && !isSubmittingGrade && (
+            <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-md mb-8">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <i data-feather="check-circle" className="h-5 w-5 text-green-400"></i>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-700">
+                    Ce projet est marqué comme <strong>terminé</strong> avec une note de <strong>{projet.Note}/20</strong>.
                   </p>
                 </div>
-              )}
-            </section>
-          )}
-
-          {/* Affichage de la note si le projet est terminé */}
-          {projet.Status === "fini" && projet.Note && (
-            <section className="bg-green-50 border border-green-200 p-6 rounded-lg shadow mb-8">
-              <h2 className="text-lg font-medium text-green-900 mb-2">
-                Projet Terminé
-              </h2>
-              <div className="flex items-center">
-                <i data-feather="check-circle" className="h-5 w-5 text-green-600 mr-2"></i>
-                <span className="text-green-800 font-medium">
-                  Note finale: {projet.Note}/20
-                </span>
               </div>
-            </section>
+            </div>
           )}
         </main>
       </div>
