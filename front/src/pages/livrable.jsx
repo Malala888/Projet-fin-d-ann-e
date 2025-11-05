@@ -86,13 +86,90 @@ const Livrable = () => {
     }
 
     setFilteredLivrables(result);
-
-    // Mettre à jour les icônes après le filtrage
-    feather.replace();
   }, [searchTerm, selectedStatus, selectedStudent, livrables]);
 
   // Récupérer la liste unique des étudiants pour le filtre
   const studentNames = [...new Set(livrables.map(l => l.Nom_etudiant))].sort();
+
+  // Fonction pour télécharger un livrable
+  const handleDownloadFile = async (livrableId, titre) => {
+    try {
+      console.log(`Debut téléchargement livrable ${livrableId}`);
+
+      const response = await fetch(
+        `http://localhost:5000/livrables/${livrableId}/download`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = titre || `livrable_${livrableId}`;
+
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      console.log(`Téléchargement réussi: ${filename}`);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement :", error);
+      alert("Erreur lors du téléchargement du fichier. Veuillez réessayer.");
+    }
+  };
+
+  // Fonction pour valider un livrable
+  const handleValidateLivrable = async (livrableId) => {
+    if (!window.confirm("Voulez-vous vraiment valider ce livrable ?")) return;
+    try {
+      await axios.put(`http://localhost:5000/livrables/${livrableId}`, {
+        Status: "Validé"
+      });
+      alert("Livrable validé avec succès !");
+      // Recharger les données
+      if (user && user.Matricule) {
+        const response = await axios.get(`http://localhost:5000/encadreurs/${user.Matricule}/livrables`);
+        setLivrables(response.data);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la validation :", error);
+      alert("Erreur lors de la validation du livrable");
+    }
+  };
+
+  // Fonction pour rejeter un livrable
+  const handleRejectLivrable = async (livrableId) => {
+    if (!window.confirm("Voulez-vous vraiment rejeter ce livrable ?")) return;
+    try {
+      await axios.put(`http://localhost:5000/livrables/${livrableId}`, {
+        Status: "Rejeté"
+      });
+      alert("Livrable rejeté avec succès !");
+      // Recharger les données
+      if (user && user.Matricule) {
+        const response = await axios.get(`http://localhost:5000/encadreurs/${user.Matricule}/livrables`);
+        setLivrables(response.data);
+      }
+    } catch (error) {
+      console.error("Erreur lors du rejet :", error);
+      alert("Erreur lors du rejet du livrable");
+    }
+  };
 
   // NOUVEAU : Fonction pour déterminer la couleur du statut
   const getStatutClasses = (status) => {
@@ -373,19 +450,43 @@ const Livrable = () => {
                           </span>
                         </td>
                         {/* MODIFICATION : Ajout de 'whitespace-nowrap' pour que les boutons restent sur une ligne */}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center space-x-2">
-                            <button type="button" aria-label="Télécharger" className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100">
-                              <i data-feather="download" className="h-4 w-4"></i>
-                            </button>
-                            <button type="button" aria-label="Voir" className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100">
-                              <i data-feather="eye" className="h-4 w-4"></i>
-                            </button>
-                            <button type="button" aria-label="Éditer" className="text-purple-600 hover:text-purple-900 p-1 rounded-full hover:bg-purple-100">
-                              <i data-feather="edit" className="h-4 w-4"></i>
-                            </button>
-                          </div>
-                        </td>
+                         <td className="px-6 py-4 whitespace-nowrap">
+                           <div className="flex items-center space-x-2">
+                             {/* Bouton de téléchargement conditionnel : affiché seulement si le fichier existe */}
+                             {livrable.Taille_fichier && (
+                               <button
+                                 type="button"
+                                 aria-label="Télécharger"
+                                 className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-100"
+                                 onClick={() => handleDownloadFile(livrable.Id_livrable, livrable.Titre)}
+                               >
+                                 <i data-feather="download" className="h-4 w-4"></i>
+                               </button>
+                             )}
+                             {/* Bouton de validation conditionnel : affiché seulement si le statut n'est pas déjà "Validé" */}
+                             {livrable.Status !== "Validé" && (
+                               <button
+                                 type="button"
+                                 aria-label="Valider"
+                                 className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
+                                 onClick={() => handleValidateLivrable(livrable.Id_livrable)}
+                               >
+                                 <i data-feather="check-circle" className="h-4 w-4"></i>
+                               </button>
+                             )}
+                             {/* Bouton de rejet conditionnel : affiché seulement si le statut n'est pas déjà "Rejeté" */}
+                             {livrable.Status !== "Rejeté" && (
+                               <button
+                                 type="button"
+                                 aria-label="Rejeter"
+                                 className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100"
+                                 onClick={() => handleRejectLivrable(livrable.Id_livrable)}
+                               >
+                                 <i data-feather="x-circle" className="h-4 w-4"></i>
+                               </button>
+                             )}
+                           </div>
+                         </td>
                       </tr>
                     ))
                   ) : (

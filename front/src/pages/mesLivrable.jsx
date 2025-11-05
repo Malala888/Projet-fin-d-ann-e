@@ -212,6 +212,19 @@ const MesLivrables = () => {
     ];
   }, []);
 
+  const getIconForCategory = (category) => {
+    const normalized = normalizeStatus(category);
+    if (normalized === "validé" || normalized === "valide") {
+      return "check-circle";
+    } else if (normalized === "en attente" || normalized === "attente") {
+      return "clock";
+    } else if (normalized === "à venir" || normalized === "a venir") {
+      return "calendar";
+    } else {
+      return "file-text";
+    }
+  };
+
   const handleDownloadFile = async (livrableId, titre) => {
     try {
       console.log(`Debut téléchargement livrable ${livrableId}`);
@@ -429,7 +442,6 @@ const MesLivrables = () => {
       setProjets(projetsResponse.data);
 
       console.log("✅ STATE MIS À JOUR - Nouvelles données appliquées");
-      setTimeout(() => feather.replace(), 0);
     } catch (error) {
       console.error("❌ Erreur lors de la récupération des données :", error);
     } finally {
@@ -467,6 +479,17 @@ const MesLivrables = () => {
     );
   });
 
+  // =================================================================
+  // ✅ ÉTAPE 1 : AJOUTER CE USEEFFECT
+  // =================================================================
+  useEffect(() => {
+    // Cet effet se déclenche après chaque rendu où
+    // les stats ou les livrables filtrés ont changé.
+    console.log("🚀 Feather.replace() déclenché par la mise à jour des données.");
+    feather.replace();
+  }, [filteredLivrables, stats]); // Dépend des données qui affichent les icônes
+  // =================================================================
+
   // FONCTION DE DIAGNOSTIC POUR VÉRIFIER LES DONNÉES
   const checkDataIntegrity = () => {
     console.log("🔬 DIAGNOSTIC DES DONNÉES:");
@@ -484,6 +507,7 @@ const MesLivrables = () => {
   }
 
   useEffect(() => {
+    feather.replace();
     AOS.init({ duration: 800, once: true });
     const storedUser = localStorage.getItem("user");
     const storedRole = localStorage.getItem("role");
@@ -685,10 +709,12 @@ const MesLivrables = () => {
             <h1 className="text-3xl font-bold text-gray-800">Mes livrables</h1>
             <div className="flex space-x-2">
               <button
-                onClick={() => {
+                onClick={async () => {
                   console.log("🔄 RECHARGEMENT MANUEL DEMANDÉ");
                   setRefreshKey((prev) => prev + 1);
-                  fetchData();
+                  setActiveFilter("Tous");
+                  setSearchQuery("");
+                  await fetchData();
                 }}
                 className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center text-sm"
                 title="Recharger les données"
@@ -716,7 +742,6 @@ const MesLivrables = () => {
                   key={filter}
                   onClick={() => {
                     setActiveFilter(filter);
-                    setTimeout(() => feather.replace(), 0);
                   }}
                   className={`px-3 py-1 text-sm rounded-full border transition ${
                     activeFilter === filter
@@ -784,7 +809,7 @@ const MesLivrables = () => {
                       <div className="flex items-center">
                         <div className="h-10 w-10 rounded-lg flex items-center justify-center bg-gray-100">
                           <i
-                            data-feather="file-text"
+                            data-feather={getIconForCategory(liv.categories[0])}
                             className="h-5 w-5 text-gray-600"
                           ></i>
                         </div>

@@ -1306,26 +1306,27 @@ app.delete("/encadreurs/:matricule/image", async (req, res) => {
   }
 });
 
-// GET projets d'un encadreur spécifique avec détails des étudiants
+// GET projets d'un encadreur spécifique (AVEC STATUT AUTOMATIQUE)
 app.get("/encadreurs/:matricule/projets", async (req, res) => {
   const encadreurId = req.params.matricule;
   try {
     console.log(`📋 Récupération des projets pour l'encadreur ${encadreurId}`);
 
-    // Récupérer les projets où l'encadreur supervise avec les informations des étudiants
     const [projetRows] = await pool.query(
-      `SELECT P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Status, P.Id_equipe, P.Id_etudiant,
-              E.Nom AS Nom_etudiant, E.Email AS Email_etudiant, E.Niveau AS Niveau_etudiant, E.Filiere AS Filiere_etudiant,
-              EQ.Nom_equipe
+      `SELECT
+         P.Id_projet, P.Theme, P.Description, P.Avancement, P.Date_deb, P.Date_fin, P.Id_equipe, P.Id_etudiant,
+         E.Nom AS Nom_etudiant, E.Email AS Email_etudiant, E.Niveau AS Niveau_etudiant, E.Filiere AS Filiere_etudiant,
+         EQ.Nom_equipe,
+         -- CORRECTION : Le statut est maintenant calculé en fonction de la date de fin
+         CASE
+           WHEN P.Date_fin < CURDATE() THEN 'Terminé'
+           ELSE 'En cours'
+         END AS Status
        FROM projet P
        JOIN etudiant E ON P.Id_etudiant = E.Immatricule
        LEFT JOIN equipe EQ ON P.Id_equipe = EQ.Id_equipe
        WHERE P.Id_encadreur = ?
-       ORDER BY CASE
-         WHEN P.Status = 'En cours' THEN 0
-         WHEN P.Status = 'En retard' THEN 1
-         ELSE 2
-       END, P.Date_deb DESC`,
+       ORDER BY P.Date_deb DESC`,
       [encadreurId]
     );
 
@@ -1338,16 +1339,26 @@ app.get("/encadreurs/:matricule/projets", async (req, res) => {
   }
 });
 
-// NOUVELLE ROUTE : Obtenir tous les étudiants encadrés par un encadreur spécifique
+// GET tous les étudiants encadrés (AVEC LEUR PROJET ET AVATAR)
+// VERSION CORRIGÉE : Groupe par étudiant pour éviter les doublons
 app.get("/encadreurs/:matricule/etudiants", async (req, res) => {
   const { matricule } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT DISTINCT e.*, eq.Nom_equipe
+      `SELECT
+         e.Immatricule, e.Nom, e.Email,
+         e.Image AS Avatar,
+         e.Niveau, e.Filiere,
+         COUNT(p.Id_projet) AS Nombre_projets,
+         AVG(p.Avancement) AS Avancement_moyen
        FROM etudiant e
-       LEFT JOIN equipe eq ON e.Id_equipe = eq.Id_equipe
-       JOIN projet p ON e.Immatricule = p.Id_etudiant OR e.Id_equipe = p.Id_equipe
-       WHERE p.Id_encadreur = ?`,
+       -- Jointure pour trouver les projets (individuels ou d'équipe)
+       LEFT JOIN projet p ON (e.Immatricule = p.Id_etudiant OR e.Id_equipe = p.Id_equipe)
+       -- On s'assure que les projets trouvés sont bien ceux de l'encadreur
+       WHERE p.Id_encadreur = ?
+       -- On groupe par étudiant pour n'avoir qu'une ligne par étudiant
+       GROUP BY e.Immatricule, e.Nom, e.Email, e.Image, e.Niveau, e.Filiere
+       ORDER BY e.Nom`,
       [matricule]
     );
     res.json(rows);

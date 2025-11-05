@@ -19,7 +19,6 @@ const Dashboard = () => {
   const chartsRef = useRef({});
 
   useEffect(() => {
-    feather.replace();
     AOS.init({ duration: 800, once: true });
 
     const storedUser = localStorage.getItem("user");
@@ -55,10 +54,6 @@ const Dashboard = () => {
       navigate("/login");
     }
   }, [navigate]);
-
-  useEffect(() => {
-    feather.replace();
-  });
 
   // useEffect pour la gestion des graphiques
   useEffect(() => {
@@ -112,6 +107,18 @@ const Dashboard = () => {
     };
   }, [etudiant, projets, loading]);
 
+  // =================================================================
+  // ✅ AJOUTER CE USEEFFECT POUR GÉRER LES ICÔNES
+  // =================================================================
+  useEffect(() => {
+    // Cet effet se déclenche après que le chargement est terminé
+    // et que les données du dashboard (projets, statistiques, calendrier) ont été mises à jour.
+    if (!loading) {
+      console.log("🚀 Feather.replace() déclenché par la fin du chargement.");
+      feather.replace();
+    }
+  }, [loading, projets, statistiques, calendrier]); // Dépend de la fin du chargement et des données
+  // =================================================================
 
   const upcomingDeadlines = useMemo(() => {
     if (!calendrier) return [];
